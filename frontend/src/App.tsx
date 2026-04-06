@@ -7,17 +7,18 @@ import { NewsFeed } from "./components/NewsFeed";
 import { Watchlist } from "./components/Watchlist";
 import { CandlestickChart } from "./components/CandlestickChart";
 import { SentimentChart } from "./components/SentimentChart";
+import { SocialPanel } from "./components/SocialPanel";
+import { TabNav, type Tab } from "./components/TabNav";
 import { useWebSocket } from "./hooks/useWebSocket";
 import "./App.css";
 
 function App() {
   const { signals, connected, lastUpdate } = useWebSocket();
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("overview");
 
   const selectedSignal = selectedTicker ? signals[selectedTicker] ?? null : null;
-  // Default to first available ticker for charts
-  const chartTicker =
-    selectedTicker ?? Object.keys(signals)[0] ?? "AAPL";
+  const chartTicker = selectedTicker ?? Object.keys(signals)[0] ?? "AAPL";
 
   return (
     <div className="app">
@@ -29,6 +30,7 @@ function App() {
       <MarketBar signals={signals} />
 
       <div className="main-grid">
+        {/* Always-visible watchlist sidebar */}
         <aside className="sidebar">
           <Watchlist
             signals={signals}
@@ -37,22 +39,44 @@ function App() {
           />
         </aside>
 
+        {/* Tabbed main area */}
         <main className="content">
-          {/* Top: Screener table + Candlestick chart side by side */}
-          <div className="top-panels">
-            <SignalTable
-              signals={signals}
-              onSelect={setSelectedTicker}
-              selected={selectedTicker}
-            />
-            <CandlestickChart ticker={chartTicker} />
-          </div>
+          <TabNav active={activeTab} onChange={setActiveTab} />
 
-          {/* Bottom: Detail, Sentiment chart, News */}
-          <div className="bottom-panels">
-            <DetailPanel signal={selectedSignal} />
-            <SentimentChart ticker={chartTicker} />
-            <NewsFeed signals={signals} />
+          <div className="tab-content">
+            {/* ── Screener tab ── */}
+            {activeTab === "overview" && (
+              <div className="tab-pane full-pane">
+                <SignalTable
+                  signals={signals}
+                  onSelect={(t) => { setSelectedTicker(t); setActiveTab("charts"); }}
+                  selected={selectedTicker}
+                />
+              </div>
+            )}
+
+            {/* ── Charts tab ── */}
+            {activeTab === "charts" && (
+              <div className="tab-pane charts-pane">
+                <CandlestickChart ticker={chartTicker} />
+                <SentimentChart ticker={chartTicker} />
+              </div>
+            )}
+
+            {/* ── Social tab ── */}
+            {activeTab === "social" && (
+              <div className="tab-pane full-pane">
+                <SocialPanel signals={signals} selectedTicker={selectedTicker} />
+              </div>
+            )}
+
+            {/* ── Analysis tab ── */}
+            {activeTab === "analysis" && (
+              <div className="tab-pane analysis-pane">
+                <DetailPanel signal={selectedSignal} />
+                <NewsFeed signals={signals} />
+              </div>
+            )}
           </div>
         </main>
       </div>

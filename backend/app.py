@@ -21,6 +21,7 @@ from trading_algorithm.data_fetcher import NewsFetcher, StockDataFetcher
 from trading_algorithm.political_tracker import PoliticalTradeTracker
 from trading_algorithm.sentiment import SentimentAnalyzer, SentimentTracker
 from trading_algorithm.signals import SignalGenerator
+from social_fetcher import SocialSentimentAggregator
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -78,8 +79,10 @@ class AppState:
         self.sentiment_tracker = SentimentTracker()
         self.political_tracker = PoliticalTradeTracker()
         self.signal_generator = SignalGenerator()
+        self.social_aggregator = SocialSentimentAggregator()
         self.latest_signals: dict[str, dict] = {}
         self.latest_quotes: dict[str, dict] = {}
+        self.latest_social: dict[str, dict] = {}
         self.ws_clients: set[WebSocket] = set()
         self._poll_task: Optional[asyncio.Task] = None
 
@@ -97,6 +100,15 @@ class AppState:
                 articles = self.news_fetcher.fetch_ticker_news(ticker, max_articles=10)
                 news_sentiment = self.sentiment_analyzer.analyze_articles(articles)
                 news_sentiment.ticker = ticker
+
+                # Real social sentiment from Reddit + StockTwits
+                social = self.social_aggregator.get_social_signal(
+                    ticker, self.sentiment_analyzer
+                )
+                self.latest_social[ticker] = social
+                news_sentiment.social_score = social["score"]
+                news_sentiment.social_mention_count = social["post_count"] + social["message_count"]
+
                 self.sentiment_tracker.update(ticker, news_sentiment)
 
                 pol = politician_signals.get(ticker)
@@ -115,7 +127,7 @@ class AppState:
                 sig = self.signal_generator.generate_signal(
                     ticker=ticker,
                     news_score=news_sentiment.news_score,
-                    social_score=news_sentiment.social_score,
+                    social_score=social["score"],
                     politician_score=pol_score,
                     price_data=quote,
                     price_history=history,
@@ -284,6 +296,18 @@ def get_watchlist():
         "tickers": WATCHED_STOCKS,
         "politicians": TRACKED_POLITICIANS,
     }
+
+
+@app.get("/api/social/{ticker}")
+def get_social(ticker: str):
+    """Get Reddit + StockTwits sentiment for a ticker."""
+    ticker = ticker.upper()
+    if ticker in state.latest_social:
+        return state.latest_social[ticker]
+    # Fetch on demand if not cached
+    social = state.social_aggregator.get_social_signal(ticker, state.sentiment_analyzer)
+    state.latest_social[ticker] = social
+    return social
 
 
 @app.get("/api/gpu")
