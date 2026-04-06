@@ -323,6 +323,40 @@ def get_gpu_status():
     }
 
 
+@app.get("/api/history/{ticker}")
+def get_price_history(ticker: str, days: int = Query(90, ge=7, le=365)):
+    """Get OHLCV price history for candlestick charts."""
+    ticker = ticker.upper()
+    history = state.stock_fetcher.fetch_price_history(ticker, days=days)
+    return [
+        {
+            "time": int(bar["date"].timestamp()),
+            "open": round(bar["open"], 2),
+            "high": round(bar["high"], 2),
+            "low": round(bar["low"], 2),
+            "close": round(bar["close"], 2),
+            "volume": int(bar["volume"]),
+        }
+        for bar in history
+    ]
+
+
+@app.get("/api/sentiment_history/{ticker}")
+def get_sentiment_history(ticker: str):
+    """Get sentiment score history for a ticker."""
+    ticker = ticker.upper()
+    history = state.sentiment_tracker._history.get(ticker, [])
+    return [
+        {
+            "time": int(s.last_updated.timestamp()),
+            "score": s.news_score,
+            "combined": s.combined_score,
+            "article_count": s.article_count,
+        }
+        for s in history
+    ]
+
+
 # ── WebSocket endpoint ─��───────────────────────────────────
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):

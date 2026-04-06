@@ -213,10 +213,30 @@ body {
   overflow: hidden;
 }
 
-.bottom-panels {
+/* ── Top panels (screener + candlestick) ────────────────── */
+.top-panels {
   display: flex;
   flex: 1;
   min-height: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.top-panels .signal-table-panel {
+  flex: 1;
+  min-width: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: none;
+}
+
+.top-panels .chart-panel {
+  flex: 1.4;
+  min-width: 0;
+}
+
+.bottom-panels {
+  display: flex;
+  height: 280px;
+  flex-shrink: 0;
 }
 
 .bottom-panels > * {
@@ -313,7 +333,8 @@ body {
 
 .table-wrapper {
   overflow: auto;
-  max-height: 50vh;
+  flex: 1;
+  min-height: 0;
 }
 
 .signal-table {
@@ -670,6 +691,106 @@ body {
   text-align: center;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+/* ── Charts ─────────────────────────────────────────────── */
+.chart-panel,
+.sentiment-chart-panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+
+.chart-body {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.chart-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-primary);
+  z-index: 2;
+}
+
+.chart-error {
+  color: var(--loss);
+}
+
+/* Candlestick header */
+.chart-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-ohlc {
+  display: flex;
+  gap: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.ohlc-item {
+  color: var(--text-muted);
+}
+
+.ohlc-item span {
+  color: var(--text-primary);
+}
+
+/* Range buttons */
+.chart-range-btns {
+  display: flex;
+  gap: 2px;
+}
+
+.range-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  padding: 2px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.range-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-active);
+}
+
+.range-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* Sentiment chart legend */
+.chart-legend {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Bottom panels — ensure sentiment chart has defined height */
+.sentiment-chart-panel {
+  flex: 1.2;
+  border-right: 1px solid var(--border);
 }
 
 /* ── Scrollbar styling ──────────────────────────────────── */

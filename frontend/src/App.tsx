@@ -5,6 +5,8 @@ import { SignalTable } from "./components/SignalTable";
 import { DetailPanel } from "./components/DetailPanel";
 import { NewsFeed } from "./components/NewsFeed";
 import { Watchlist } from "./components/Watchlist";
+import { CandlestickChart } from "./components/CandlestickChart";
+import { SentimentChart } from "./components/SentimentChart";
 import { useWebSocket } from "./hooks/useWebSocket";
 import "./App.css";
 
@@ -13,6 +15,9 @@ function App() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   const selectedSignal = selectedTicker ? signals[selectedTicker] ?? null : null;
+  // Default to first available ticker for charts
+  const chartTicker =
+    selectedTicker ?? Object.keys(signals)[0] ?? "AAPL";
 
   return (
     <div className="app">
@@ -33,13 +38,20 @@ function App() {
         </aside>
 
         <main className="content">
-          <SignalTable
-            signals={signals}
-            onSelect={setSelectedTicker}
-            selected={selectedTicker}
-          />
+          {/* Top: Screener table + Candlestick chart side by side */}
+          <div className="top-panels">
+            <SignalTable
+              signals={signals}
+              onSelect={setSelectedTicker}
+              selected={selectedTicker}
+            />
+            <CandlestickChart ticker={chartTicker} />
+          </div>
+
+          {/* Bottom: Detail, Sentiment chart, News */}
           <div className="bottom-panels">
             <DetailPanel signal={selectedSignal} />
+            <SentimentChart ticker={chartTicker} />
             <NewsFeed signals={signals} />
           </div>
         </main>
