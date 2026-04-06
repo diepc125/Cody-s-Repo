@@ -132,12 +132,26 @@ class RedditFetcher:
         }
 
 
+_BROWSER_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Referer": "https://stocktwits.com/",
+    "Origin": "https://stocktwits.com",
+}
+
+
 class StockTwitsFetcher:
     """Fetches messages from StockTwits with user-labeled sentiment."""
 
     def __init__(self):
         self.session = requests.Session()
-        self.session.headers.update({"User-Agent": USER_AGENT})
+        self.session.headers.update(_BROWSER_HEADERS)
         self._cache: dict[str, tuple[list, float]] = {}
         self._cache_ttl = 120  # 2 minutes
 
@@ -156,6 +170,10 @@ class StockTwitsFetcher:
         try:
             url = f"{STOCKTWITS_BASE}/streams/symbol/{ticker.upper()}.json"
             resp = self.session.get(url, timeout=10, params={"limit": max_messages})
+            if resp.status_code == 403:
+                logger.warning("StockTwits blocked for %s — skipping (no API key)", ticker)
+                self._cache[cache_key] = ([], time.time())
+                return []
             if resp.status_code == 429:
                 logger.warning("StockTwits rate limited for %s", ticker)
                 return []
