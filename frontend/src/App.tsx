@@ -49,7 +49,7 @@ function App() {
               <div className="tab-pane full-pane">
                 <SignalTable
                   signals={signals}
-                  onSelect={(t) => { setSelectedTicker(t); setActiveTab("charts"); }}
+                  onSelect={(t) => { setSelectedTicker(t); setActiveTab("analysis"); }}
                   selected={selectedTicker}
                 />
               </div>
