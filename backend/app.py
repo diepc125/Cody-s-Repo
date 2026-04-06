@@ -286,6 +286,43 @@ def get_watchlist():
     }
 
 
+@app.get("/api/gpu")
+def get_gpu_status():
+    """Get GPU and sentiment engine status."""
+    analyzer = state.sentiment_analyzer
+    finbert = getattr(analyzer, "_finbert", None)
+    try:
+        import torch
+        cuda_available = torch.cuda.is_available()
+        gpu_name = torch.cuda.get_device_name(0) if cuda_available else None
+        vram_total = None
+        vram_used = None
+        if cuda_available:
+            props = torch.cuda.get_device_properties(0)
+            vram_total = round(props.total_memory / 1e9, 1)
+            vram_used = round(torch.cuda.memory_allocated(0) / 1e9, 2)
+        cuda_version = torch.version.cuda if cuda_available else None
+        torch_version = torch.__version__
+    except ImportError:
+        cuda_available = False
+        gpu_name = None
+        vram_total = None
+        vram_used = None
+        cuda_version = None
+        torch_version = None
+
+    return {
+        "engine": analyzer.engine,
+        "finbert_ready": bool(finbert and finbert.ready),
+        "cuda_available": cuda_available,
+        "gpu_name": gpu_name,
+        "cuda_version": cuda_version,
+        "torch_version": torch_version,
+        "vram_total_gb": vram_total,
+        "vram_used_gb": vram_used,
+    }
+
+
 # ── WebSocket endpoint ─��───────────────────────────────────
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket):

@@ -8,3 +8,9 @@ beautifulsoup4>=4.12.0
 vaderSentiment>=3.3.2
 lxml>=4.9.0
 feedparser>=6.0.0
+
+# GPU / ML — FinBERT sentiment (RTX 5080 requires CUDA 12.6+ / PyTorch 2.6+)
+# Install PyTorch separately first:
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
+transformers>=4.40.0
+accelerate>=0.27.0
