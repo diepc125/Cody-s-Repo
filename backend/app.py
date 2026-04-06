@@ -13,8 +13,10 @@ from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# Add parent dir so we can import trading_algorithm
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+# Add repo root and backend dir to path
+_HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE.parent))  # for trading_algorithm
+sys.path.insert(0, str(_HERE))         # for social_fetcher
 
 from trading_algorithm.config import TRACKED_POLITICIANS, WATCHED_STOCKS
 from trading_algorithm.data_fetcher import NewsFetcher, StockDataFetcher
