@@ -154,6 +154,7 @@ class StockTwitsFetcher:
         self.session.headers.update(_BROWSER_HEADERS)
         self._cache: dict[str, tuple[list, float]] = {}
         self._cache_ttl = 120  # 2 minutes
+        self._blocked = False   # set True on first 403; stops retrying
 
     def fetch_ticker_messages(self, ticker: str, max_messages: int = 30) -> list[dict]:
         """Fetch recent StockTwits messages for a ticker.
@@ -161,6 +162,9 @@ class StockTwitsFetcher:
         Returns list of dicts with: body, sentiment (bullish/bearish/None),
         created_at, username, likes.
         """
+        if self._blocked:
+            return []
+
         cache_key = ticker.upper()
         cached = self._cache.get(cache_key)
         if cached and time.time() - cached[1] < self._cache_ttl:
@@ -171,8 +175,8 @@ class StockTwitsFetcher:
             url = f"{STOCKTWITS_BASE}/streams/symbol/{ticker.upper()}.json"
             resp = self.session.get(url, timeout=10, params={"limit": max_messages})
             if resp.status_code == 403:
-                logger.warning("StockTwits blocked for %s — skipping (no API key)", ticker)
-                self._cache[cache_key] = ([], time.time())
+                logger.info("StockTwits API requires auth — disabling (Reddit-only mode)")
+                self._blocked = True
                 return []
             if resp.status_code == 429:
                 logger.warning("StockTwits rate limited for %s", ticker)
