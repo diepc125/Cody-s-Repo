@@ -22,8 +22,12 @@ REDDIT_HEADERS = {
 STOCKTWITS_BASE = "https://api.stocktwits.com/api/2"
 REDDIT_BASE = "https://www.reddit.com"
 
-# Subreddits to scan for each ticker
-REDDIT_SUBS = ["wallstreetbets", "stocks", "investing", "options", "StockMarket"]
+# Fewer subreddits = fewer requests. WSB + stocks covers the bulk of signal.
+REDDIT_SUBS = ["wallstreetbets", "stocks", "investing"]
+
+# Module-level backoff: when Reddit 429s us, all tickers wait until this time.
+_reddit_blocked_until: float = 0.0
+_REDDIT_BACKOFF_SECONDS = 120  # wait 2 minutes after a 429
 
 
 class RedditFetcher:
@@ -33,7 +37,7 @@ class RedditFetcher:
         self.session = requests.Session()
         self.session.headers.update(REDDIT_HEADERS)
         self._cache: dict[str, tuple[list, float]] = {}
-        self._cache_ttl = 300  # 5 minutes
+        self._cache_ttl = 900  # 15 minutes — Reddit rate limits anonymous access hard
 
     def fetch_ticker_posts(self, ticker: str, max_posts: int = 30) -> list[dict]:
         """Fetch Reddit posts that are specifically about *ticker*.
@@ -50,61 +54,69 @@ class RedditFetcher:
         if cached and time.time() - cached[1] < self._cache_ttl:
             return cached[0]
 
+        global _reddit_blocked_until
+
         posts: list[dict] = []
         seen_ids: set[str] = set()
 
-        # Two queries per subreddit: cashtag first (most precise), then bare symbol
-        queries = [f"${ticker}", ticker]
+        # Single combined query: "AAPL OR $AAPL" — one request per subreddit
+        # instead of two, cutting request count in half.
+        query = f"{ticker} OR ${ticker}"
 
         for sub in REDDIT_SUBS:
-            for query in queries:
-                try:
-                    url = f"{REDDIT_BASE}/r/{sub}/search.json"
-                    params = {
-                        "q": query,
-                        "sort": "relevance",
-                        "limit": 10,
-                        "restrict_sr": "true",
-                        "t": "week",
-                    }
-                    resp = self.session.get(url, params=params, timeout=10)
-                    if resp.status_code == 429:
-                        logger.warning("Reddit rate limited on r/%s", sub)
-                        break  # back off from this subreddit entirely
-                    if not resp.ok:
+            if time.time() < _reddit_blocked_until:
+                break  # whole module is in backoff — skip remaining subs
+
+            try:
+                url = f"{REDDIT_BASE}/r/{sub}/search.json"
+                params = {
+                    "q": query,
+                    "sort": "relevance",
+                    "limit": 10,
+                    "restrict_sr": "true",
+                    "t": "week",
+                }
+                resp = self.session.get(url, params=params, timeout=10)
+
+                if resp.status_code == 429:
+                    _reddit_blocked_until = time.time() + _REDDIT_BACKOFF_SECONDS
+                    logger.warning(
+                        "Reddit rate limited — pausing all Reddit fetches for %ds",
+                        _REDDIT_BACKOFF_SECONDS,
+                    )
+                    break
+
+                if not resp.ok:
+                    continue
+
+                for child in resp.json().get("data", {}).get("children", []):
+                    post = child.get("data", {})
+                    post_id = post.get("id")
+                    if not post_id or post_id in seen_ids:
                         continue
-                    data = resp.json()
+                    seen_ids.add(post_id)
 
-                    for child in data.get("data", {}).get("children", []):
-                        post = child.get("data", {})
-                        post_id = post.get("id")
-                        if not post_id or post_id in seen_ids:
-                            continue
-                        seen_ids.add(post_id)
+                    title = post.get("title", "")
+                    if not self._title_is_about(title, ticker):
+                        continue
 
-                        # Require ticker or cashtag in the title — eliminates
-                        # threads that merely mention the stock in passing
-                        title = post.get("title", "")
-                        if not self._title_is_about(title, ticker):
-                            continue
+                    created = post.get("created_utc", 0)
+                    if time.time() - created > 604800:  # 7 days
+                        continue
 
-                        created = post.get("created_utc", 0)
-                        if time.time() - created > 604800:  # 7 days
-                            continue
-
-                        posts.append({
-                            "title":        title,
-                            "body":         post.get("selftext", "")[:500],
-                            "score":        post.get("score", 0),
-                            "upvote_ratio": post.get("upvote_ratio", 0.5),
-                            "created_utc":  created,
-                            "subreddit":    sub,
-                            "url":          f"https://reddit.com{post.get('permalink', '')}",
-                            "num_comments": post.get("num_comments", 0),
-                            "source":       "reddit",
-                        })
-                except Exception as exc:
-                    logger.warning("Reddit fetch failed r/%s %s: %s", sub, query, exc)
+                    posts.append({
+                        "title":        title,
+                        "body":         post.get("selftext", "")[:500],
+                        "score":        post.get("score", 0),
+                        "upvote_ratio": post.get("upvote_ratio", 0.5),
+                        "created_utc":  created,
+                        "subreddit":    sub,
+                        "url":          f"https://reddit.com{post.get('permalink', '')}",
+                        "num_comments": post.get("num_comments", 0),
+                        "source":       "reddit",
+                    })
+            except Exception as exc:
+                logger.warning("Reddit fetch failed r/%s %s: %s", sub, ticker, exc)
 
         posts.sort(key=lambda p: p["score"], reverse=True)
         posts = posts[:max_posts]
