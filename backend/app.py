@@ -190,7 +190,6 @@ class AppState:
                 logger.error("Error processing %s: %s", ticker, exc)
 
         self.latest_signals = signals
-        database.save_signals(signals)
         return signals
 
 
@@ -256,6 +255,8 @@ async def poll_and_broadcast():
     while True:
         try:
             signals = await asyncio.to_thread(state.run_cycle)
+            _save_snapshot(signals)
+            database.save_signals(signals)
             payload = json.dumps({"type": "signals", "data": signals})
             dead = set()
             for ws in state.ws_clients:
@@ -266,12 +267,37 @@ async def poll_and_broadcast():
             state.ws_clients -= dead
         except Exception as exc:
             logger.error("Poll cycle error: %s", exc)
-        await asyncio.sleep(5)
+        await asyncio.sleep(60)
+
+
+_SNAPSHOT_PATH = _HERE.parent / "data" / "signals_snapshot.json"
+
+
+def _save_snapshot(signals: dict) -> None:
+    try:
+        _SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        _SNAPSHOT_PATH.write_text(json.dumps(signals))
+    except Exception:
+        pass
+
+
+def _load_snapshot() -> dict:
+    try:
+        if _SNAPSHOT_PATH.exists():
+            return json.loads(_SNAPSHOT_PATH.read_text())
+    except Exception:
+        pass
+    return {}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     database.init_db()
+    # Restore last known signals so the WebSocket can serve data immediately
+    cached = _load_snapshot()
+    if cached:
+        state.latest_signals = cached
+        logger.info("Restored %d signals from snapshot", len(cached))
     state._poll_task = asyncio.create_task(poll_and_broadcast())
     yield
     state._poll_task.cancel()

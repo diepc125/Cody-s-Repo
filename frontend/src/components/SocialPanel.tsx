@@ -41,7 +41,11 @@ function SocialCard({ ticker }: { ticker: string }) {
   }, [ticker]);
 
   const hasData = data && (data.post_count > 0 || data.message_count > 0);
-  const bullPct = data ? Math.round(data.bull_ratio * 100) : 50;
+  // Derive bull% from composite score (-1 to +1) so it reflects Reddit NLP,
+  // not just StockTwits labels (which default to 50/50 when unavailable).
+  const bullPct = hasData
+    ? Math.min(100, Math.max(0, Math.round((data!.score + 1) / 2 * 100)))
+    : 50;
   const bearPct = 100 - bullPct;
   const mood    = data ? moodLabel(data.score) : null;
 
