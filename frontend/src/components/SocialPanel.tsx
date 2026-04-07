@@ -1,19 +1,16 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, MessageCircle, ExternalLink } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, AlertCircle } from "lucide-react";
 import type { StockSignal } from "../types";
 
 interface SocialData {
   score: number;
   reddit_score: number;
-  stocktwits_score: number;
-  stocktwits_labeled_score: number;
   post_count: number;
   message_count: number;
   bull_ratio: number;
   bullish_count: number;
   bearish_count: number;
   top_posts: { title: string; score: number; subreddit: string; url: string }[];
-  subreddits: string[];
 }
 
 interface SocialPanelProps {
@@ -23,8 +20,16 @@ interface SocialPanelProps {
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+function moodLabel(score: number): { text: string; cls: string } {
+  if (score >= 0.3)  return { text: "Very Bullish",  cls: "mood-strong-bull" };
+  if (score >= 0.1)  return { text: "Leaning Bullish", cls: "mood-bull" };
+  if (score <= -0.3) return { text: "Very Bearish",   cls: "mood-strong-bear" };
+  if (score <= -0.1) return { text: "Leaning Bearish", cls: "mood-bear" };
+  return { text: "Neutral", cls: "mood-neutral" };
+}
+
 function SocialCard({ ticker }: { ticker: string }) {
-  const [data, setData] = useState<SocialData | null>(null);
+  const [data, setData]       = useState<SocialData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,103 +37,92 @@ function SocialCard({ ticker }: { ticker: string }) {
     fetch(`${API_BASE}/api/social/${ticker}`)
       .then((r) => r.json())
       .then(setData)
-      .catch(console.error)
+      .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, [ticker]);
 
-  if (loading) {
-    return (
-      <div className="social-card">
-        <div className="social-card-header">
-          <span className="social-ticker">{ticker}</span>
-        </div>
-        <div className="social-loading">Fetching social data...</div>
-      </div>
-    );
-  }
-
-  if (!data) return null;
-
-  const bullPct = Math.round(data.bull_ratio * 100);
+  const hasData = data && (data.post_count > 0 || data.message_count > 0);
+  const bullPct = data ? Math.round(data.bull_ratio * 100) : 50;
   const bearPct = 100 - bullPct;
-  const scoreColor = data.score > 0.1 ? "#22c55e" : data.score < -0.1 ? "#ef4444" : "#f59e0b";
+  const mood    = data ? moodLabel(data.score) : null;
 
   return (
     <div className="social-card">
+      {/* Card header */}
       <div className="social-card-header">
         <span className="social-ticker">{ticker}</span>
-        <span className="social-score" style={{ color: scoreColor }}>
-          {data.score >= 0 ? "+" : ""}{data.score.toFixed(3)}
-        </span>
+        {mood && !loading && hasData && (
+          <span className={`social-mood ${mood.cls}`}>{mood.text}</span>
+        )}
       </div>
 
-      {/* Bull/Bear gauge */}
-      <div className="bull-bear-bar">
-        <div
-          className="bull-segment"
-          style={{ width: `${bullPct}%` }}
-          title={`Bullish: ${bullPct}%`}
-        />
-        <div
-          className="bear-segment"
-          style={{ width: `${bearPct}%` }}
-          title={`Bearish: ${bearPct}%`}
-        />
-      </div>
-      <div className="bull-bear-labels">
-        <span className="bull-label">
-          <TrendingUp size={11} /> {data.bullish_count} Bullish ({bullPct}%)
-        </span>
-        <span className="bear-label">
-          <TrendingDown size={11} /> {data.bearish_count} Bearish ({bearPct}%)
-        </span>
-      </div>
+      {loading && (
+        <div className="social-placeholder">Loading…</div>
+      )}
 
-      {/* Sources */}
-      <div className="social-sources">
-        <div className="source-stat">
-          <span className="source-label">Reddit</span>
-          <span className="source-value">{data.post_count} posts</span>
-          <span
-            className="source-score"
-            style={{ color: data.reddit_score >= 0 ? "#22c55e" : "#ef4444" }}
-          >
-            {data.reddit_score >= 0 ? "+" : ""}{data.reddit_score.toFixed(3)}
-          </span>
+      {!loading && !hasData && (
+        <div className="social-no-data">
+          <Clock size={16} className="social-no-data-icon" />
+          <p>No social data yet.</p>
+          <p className="social-no-data-hint">
+            Reddit is fetched once per hour to avoid rate limits.
+            Check back shortly.
+          </p>
         </div>
-        <div className="source-stat">
-          <span className="source-label">StockTwits</span>
-          <span className="source-value">{data.message_count} msgs</span>
-          <span
-            className="source-score"
-            style={{ color: data.stocktwits_score >= 0 ? "#22c55e" : "#ef4444" }}
-          >
-            {data.stocktwits_score >= 0 ? "+" : ""}{data.stocktwits_score.toFixed(3)}
-          </span>
-        </div>
-      </div>
+      )}
 
-      {/* Top Reddit posts */}
-      {data.top_posts.length > 0 && (
-        <div className="top-posts">
-          <div className="top-posts-title">Top Posts</div>
-          {data.top_posts.slice(0, 3).map((post, i) => (
-            <a
-              key={i}
-              href={post.url}
-              target="_blank"
-              rel="noreferrer"
-              className="post-item"
-            >
-              <MessageCircle size={10} className="post-icon" />
-              <span className="post-title">{post.title}</span>
-              <span className="post-meta">
-                r/{post.subreddit} · ▲{post.score}
+      {!loading && hasData && data && (
+        <>
+          {/* Bull / Bear gauge */}
+          <div className="social-gauge-wrap">
+            <div className="social-gauge">
+              <div className="gauge-bull" style={{ width: `${bullPct}%` }} />
+              <div className="gauge-bear" style={{ width: `${bearPct}%` }} />
+            </div>
+            <div className="gauge-labels">
+              <span className="gauge-bull-label">
+                <TrendingUp size={13} /> {bullPct}% Bullish
               </span>
-              <ExternalLink size={9} className="post-link" />
-            </a>
-          ))}
-        </div>
+              <span className="gauge-bear-label">
+                {bearPct}% Bearish <TrendingDown size={13} />
+              </span>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="social-stats">
+            <div className="social-stat">
+              <span className="social-stat-value">{data.post_count}</span>
+              <span className="social-stat-label">Reddit posts</span>
+            </div>
+            <div className="social-stat-divider" />
+            <div className="social-stat">
+              <span className="social-stat-value">{data.message_count}</span>
+              <span className="social-stat-label">StockTwits msgs</span>
+            </div>
+          </div>
+
+          {/* Top posts */}
+          {data.top_posts.length > 0 && (
+            <div className="social-posts">
+              <p className="social-posts-heading">Top Threads</p>
+              {data.top_posts.slice(0, 3).map((post, i) => (
+                <a
+                  key={i}
+                  href={post.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="social-post-link"
+                >
+                  <span className="social-post-title">{post.title}</span>
+                  <span className="social-post-meta">
+                    r/{post.subreddit} · ▲{post.score}
+                  </span>
+                </a>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -137,22 +131,27 @@ function SocialCard({ ticker }: { ticker: string }) {
 export function SocialPanel({ signals, selectedTicker }: SocialPanelProps) {
   const tickers = selectedTicker
     ? [selectedTicker]
-    : Object.keys(signals).slice(0, 6); // Show top 6 if none selected
+    : Object.keys(signals).slice(0, 6);
 
   return (
     <div className="social-panel">
       <div className="panel-header">
-        <span className="panel-title">Social Sentiment</span>
-        <span className="panel-meta">Reddit · StockTwits</span>
+        <span className="panel-title">Social Buzz</span>
+        <span className="panel-meta" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <Clock size={12} /> Reddit refreshes hourly
+        </span>
       </div>
-      <div className="social-grid">
-        {tickers.map((t) => (
-          <SocialCard key={t} ticker={t} />
-        ))}
-        {tickers.length === 0 && (
-          <div className="empty-state">No tickers selected.</div>
-        )}
-      </div>
+
+      {tickers.length === 0 ? (
+        <div className="social-empty-full">
+          <AlertCircle size={28} />
+          <p>Waiting for market data…</p>
+        </div>
+      ) : (
+        <div className="social-grid">
+          {tickers.map((t) => <SocialCard key={t} ticker={t} />)}
+        </div>
+      )}
     </div>
   );
 }

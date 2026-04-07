@@ -8,10 +8,10 @@ interface TabNavProps {
 }
 
 const TABS: { id: Tab; label: string; description: string; icon: React.ReactNode }[] = [
-  { id: "overview", label: "Screener",    description: "Scan all stocks and filter by signal",       icon: <BarChart2 size={14} /> },
-  { id: "charts",   label: "Charts",      description: "Price history and sentiment over time",       icon: <TrendingUp size={14} /> },
-  { id: "social",   label: "Social Buzz", description: "What Reddit and social media are saying",    icon: <MessageSquare size={14} /> },
-  { id: "analysis", label: "Deep Dive",   description: "Full signal breakdown for a selected stock", icon: <Search size={14} /> },
+  { id: "overview", label: "Screener",    description: "Scan all stocks and filter by signal",       icon: <BarChart2 size={16} /> },
+  { id: "charts",   label: "Charts",      description: "Price history and sentiment over time",       icon: <TrendingUp size={16} /> },
+  { id: "social",   label: "Social Buzz", description: "What Reddit and social media are saying",    icon: <MessageSquare size={16} /> },
+  { id: "analysis", label: "Deep Dive",   description: "Full signal breakdown for a selected stock", icon: <Search size={16} /> },
 ];
 
 export function TabNav({ active, onChange }: TabNavProps) {
