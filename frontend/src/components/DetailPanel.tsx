@@ -1,5 +1,7 @@
 import { BarChart3, Newspaper, Users, TrendingUp, Eye, Building2 } from "lucide-react";
 import { useEffect, useState } from "react";
+
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 import type { StockSignal, CrowdVsInsiders } from "../types";
 
 interface InsiderTransaction {
@@ -27,10 +29,10 @@ function InsiderTradesBlock({ ticker }: { ticker: string }) {
 
   useEffect(() => {
     setData(null);
-    fetch(`/api/insider/${ticker}`)
+    fetch(`${API_BASE}/api/insider/${ticker}`)
       .then((r) => r.json())
       .then(setData)
-      .catch(() => setData(null));
+      .catch(() => setData({ score: 0, buy_shares: 0, sell_shares: 0, transaction_count: 0, transactions: [], error: "Failed to load" }));
   }, [ticker]);
 
   if (!data) {
