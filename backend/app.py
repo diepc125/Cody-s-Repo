@@ -24,6 +24,7 @@ from trading_algorithm.political_tracker import PoliticalTradeTracker
 from trading_algorithm.sentiment import SentimentAnalyzer, SentimentTracker
 from trading_algorithm.signals import SignalGenerator
 from social_fetcher import SocialSentimentAggregator
+import database
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -178,6 +179,7 @@ class AppState:
                 logger.error("Error processing %s: %s", ticker, exc)
 
         self.latest_signals = signals
+        database.save_signals(signals)
         return signals
 
 
@@ -258,6 +260,7 @@ async def poll_and_broadcast():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    database.init_db()
     state._poll_task = asyncio.create_task(poll_and_broadcast())
     yield
     state._poll_task.cancel()
@@ -435,18 +438,14 @@ def get_price_history(ticker: str, days: int = Query(90, ge=7, le=365)):
 
 @app.get("/api/sentiment_history/{ticker}")
 def get_sentiment_history(ticker: str):
-    """Get sentiment score history for a ticker."""
-    ticker = ticker.upper()
-    history = state.sentiment_tracker._history.get(ticker, [])
-    return [
-        {
-            "time": int(s.last_updated.timestamp()),
-            "score": s.news_score,
-            "combined": s.combined_score,
-            "article_count": s.article_count,
-        }
-        for s in history
-    ]
+    """Get sentiment score time-series for a ticker (DB-backed)."""
+    return database.get_sentiment_history(ticker.upper())
+
+
+@app.get("/api/signal_history/{ticker}")
+def get_signal_history(ticker: str, days: int = Query(30, ge=1, le=365)):
+    """Get full signal history for a ticker over the last N days."""
+    return database.get_signal_history(ticker.upper(), days)
 
 
 # ── WebSocket endpoint ─��───────────────────────────────────
