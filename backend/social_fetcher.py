@@ -36,69 +36,91 @@ class RedditFetcher:
         self._cache_ttl = 300  # 5 minutes
 
     def fetch_ticker_posts(self, ticker: str, max_posts: int = 30) -> list[dict]:
-        """Fetch recent Reddit posts mentioning a ticker.
+        """Fetch Reddit posts that are specifically about *ticker*.
 
-        Returns list of dicts with keys: title, body, score, upvote_ratio,
-        created_utc, subreddit, url, num_comments.
+        Strategy:
+        1. Search each subreddit for the cashtag ($AAPL) — highest precision
+        2. Also search for the bare ticker symbol
+        3. Keep only posts where the title contains the cashtag or ticker symbol
+           so that passing mentions in unrelated threads are excluded
         """
-        cache_key = ticker.upper()
+        ticker = ticker.upper()
+        cache_key = ticker
         cached = self._cache.get(cache_key)
         if cached and time.time() - cached[1] < self._cache_ttl:
             return cached[0]
 
-        posts = []
-        seen_ids = set()
+        posts: list[dict] = []
+        seen_ids: set[str] = set()
+
+        # Two queries per subreddit: cashtag first (most precise), then bare symbol
+        queries = [f"${ticker}", ticker]
 
         for sub in REDDIT_SUBS:
-            try:
-                # Search for ticker in subreddit
-                url = f"{REDDIT_BASE}/r/{sub}/search.json"
-                params = {
-                    "q": f"{ticker} stock" if len(ticker) <= 4 else ticker,
-                    "sort": "new",
-                    "limit": 15,
-                    "restrict_sr": "true",
-                    "t": "day",  # last 24h
-                }
-                resp = self.session.get(url, params=params, timeout=10)
-                if resp.status_code == 429:
-                    logger.warning("Reddit rate limited on r/%s", sub)
-                    continue
-                resp.raise_for_status()
-                data = resp.json()
-
-                for child in data.get("data", {}).get("children", []):
-                    post = child.get("data", {})
-                    post_id = post.get("id")
-                    if not post_id or post_id in seen_ids:
+            for query in queries:
+                try:
+                    url = f"{REDDIT_BASE}/r/{sub}/search.json"
+                    params = {
+                        "q": query,
+                        "sort": "relevance",
+                        "limit": 10,
+                        "restrict_sr": "true",
+                        "t": "week",
+                    }
+                    resp = self.session.get(url, params=params, timeout=10)
+                    if resp.status_code == 429:
+                        logger.warning("Reddit rate limited on r/%s", sub)
+                        break  # back off from this subreddit entirely
+                    if not resp.ok:
                         continue
-                    seen_ids.add(post_id)
+                    data = resp.json()
 
-                    created = post.get("created_utc", 0)
-                    # Skip posts older than 48 hours
-                    if time.time() - created > 172800:
-                        continue
+                    for child in data.get("data", {}).get("children", []):
+                        post = child.get("data", {})
+                        post_id = post.get("id")
+                        if not post_id or post_id in seen_ids:
+                            continue
+                        seen_ids.add(post_id)
 
-                    posts.append({
-                        "title": post.get("title", ""),
-                        "body": post.get("selftext", "")[:500],
-                        "score": post.get("score", 0),
-                        "upvote_ratio": post.get("upvote_ratio", 0.5),
-                        "created_utc": created,
-                        "subreddit": sub,
-                        "url": f"https://reddit.com{post.get('permalink', '')}",
-                        "num_comments": post.get("num_comments", 0),
-                        "source": "reddit",
-                    })
-            except Exception as exc:
-                logger.warning("Reddit fetch failed for r/%s %s: %s", sub, ticker, exc)
+                        # Require ticker or cashtag in the title — eliminates
+                        # threads that merely mention the stock in passing
+                        title = post.get("title", "")
+                        if not self._title_is_about(title, ticker):
+                            continue
 
-        # Sort by score (upvotes)
+                        created = post.get("created_utc", 0)
+                        if time.time() - created > 604800:  # 7 days
+                            continue
+
+                        posts.append({
+                            "title":        title,
+                            "body":         post.get("selftext", "")[:500],
+                            "score":        post.get("score", 0),
+                            "upvote_ratio": post.get("upvote_ratio", 0.5),
+                            "created_utc":  created,
+                            "subreddit":    sub,
+                            "url":          f"https://reddit.com{post.get('permalink', '')}",
+                            "num_comments": post.get("num_comments", 0),
+                            "source":       "reddit",
+                        })
+                except Exception as exc:
+                    logger.warning("Reddit fetch failed r/%s %s: %s", sub, query, exc)
+
         posts.sort(key=lambda p: p["score"], reverse=True)
         posts = posts[:max_posts]
-
         self._cache[cache_key] = (posts, time.time())
         return posts
+
+    @staticmethod
+    def _title_is_about(title: str, ticker: str) -> bool:
+        """True if the post title contains the ticker symbol or cashtag."""
+        t = title.lower()
+        return (
+            f"${ticker.lower()}" in t
+            or f" {ticker.lower()} " in t
+            or t.startswith(f"{ticker.lower()} ")
+            or t.endswith(f" {ticker.lower()}")
+        )
 
     def get_texts_for_sentiment(self, ticker: str) -> list[str]:
         """Return combined title+body strings for sentiment analysis."""

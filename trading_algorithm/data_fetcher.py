@@ -8,7 +8,9 @@ import feedparser
 import requests
 import yfinance as yf
 
-from trading_algorithm.config import RSS_FEEDS, USER_AGENT, WATCHED_STOCKS
+from trading_algorithm.config import (
+    COMPANY_NAMES, RSS_FEEDS_GENERAL, RSS_FEEDS_TICKER, USER_AGENT, WATCHED_STOCKS,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -107,77 +109,118 @@ class StockDataFetcher:
 
 
 class NewsFetcher:
-    """Pulls headlines from RSS feeds for sentiment analysis."""
+    """Pulls headlines from sources that are specific to individual tickers.
+
+    Two sources are combined:
+    - Yahoo Finance RSS (ticker-specific URL)
+    - yfinance native news endpoint (always ticker-specific by construction)
+
+    A relevance filter then requires each article's title to contain either
+    the ticker symbol or the company's primary name. This prevents general
+    market noise from bleeding across tickers.
+    """
 
     def __init__(self):
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": USER_AGENT})
 
     def fetch_ticker_news(self, ticker: str, max_articles: int = 20) -> list[dict]:
-        """Fetch recent news articles mentioning a specific ticker."""
-        articles = []
+        """Return recent articles that are verifiably about *ticker*."""
+        ticker = ticker.upper()
+        company = COMPANY_NAMES.get(ticker, "")
+        cutoff  = datetime.now() - timedelta(hours=48)
 
-        for feed_url_template in RSS_FEEDS:
+        articles: list[dict] = []
+        articles.extend(self._from_rss(ticker, cutoff))
+        articles.extend(self._from_yfinance(ticker, cutoff))
+
+        # Deduplicate by title
+        seen: set[str] = set()
+        unique: list[dict] = []
+        for a in articles:
+            if a["title"] not in seen:
+                seen.add(a["title"])
+                unique.append(a)
+
+        # Relevance filter: title must mention the ticker symbol or company name.
+        # Catches "$AAPL" cashtag, "AAPL", "Apple Inc", "Apple's", etc.
+        relevant = [a for a in unique if self._is_relevant(a["title"], ticker, company)]
+
+        return sorted(relevant, key=lambda a: a["published"], reverse=True)[:max_articles]
+
+    def fetch_general_market_news(self, max_articles: int = 30) -> list[dict]:
+        """General market headlines for the news feed panel (not used for scoring)."""
+        articles: list[dict] = []
+        for url in RSS_FEEDS_GENERAL:
             try:
-                url = feed_url_template.format(ticker=ticker)
                 feed = feedparser.parse(url)
                 for entry in feed.entries[:max_articles]:
                     published = entry.get("published_parsed")
-                    pub_date = (
-                        datetime(*published[:6]) if published else datetime.now()
-                    )
-                    # Only include articles from the last 48 hours
-                    if datetime.now() - pub_date > timedelta(hours=48):
-                        continue
-                    articles.append(
-                        {
-                            "title": entry.get("title", ""),
-                            "summary": entry.get("summary", ""),
-                            "link": entry.get("link", ""),
-                            "published": pub_date,
-                            "source": feed.feed.get("title", "Unknown"),
-                        }
-                    )
-            except Exception as exc:
-                logger.warning("RSS fetch failed for %s: %s", ticker, exc)
-
-        # Deduplicate by title
-        seen = set()
-        unique = []
-        for article in articles:
-            if article["title"] not in seen:
-                seen.add(article["title"])
-                unique.append(article)
-
-        return sorted(unique, key=lambda a: a["published"], reverse=True)[
-            :max_articles
-        ]
-
-    def fetch_general_market_news(self, max_articles: int = 30) -> list[dict]:
-        """Fetch general market/financial news for overall sentiment."""
-        articles = []
-        for feed_url in RSS_FEEDS:
-            if "{ticker}" in feed_url:
-                continue  # Skip ticker-specific templates
-            try:
-                feed = feedparser.parse(feed_url)
-                for entry in feed.entries[:max_articles]:
-                    published = entry.get("published_parsed")
-                    pub_date = (
-                        datetime(*published[:6]) if published else datetime.now()
-                    )
-                    articles.append(
-                        {
-                            "title": entry.get("title", ""),
-                            "summary": entry.get("summary", ""),
-                            "link": entry.get("link", ""),
-                            "published": pub_date,
-                            "source": feed.feed.get("title", "Unknown"),
-                        }
-                    )
+                    pub_date  = datetime(*published[:6]) if published else datetime.now()
+                    articles.append({
+                        "title":     entry.get("title", ""),
+                        "summary":   entry.get("summary", ""),
+                        "link":      entry.get("link", ""),
+                        "published": pub_date,
+                        "source":    feed.feed.get("title", "Unknown"),
+                    })
             except Exception as exc:
                 logger.warning("General news fetch failed: %s", exc)
+        return sorted(articles, key=lambda a: a["published"], reverse=True)[:max_articles]
 
-        return sorted(articles, key=lambda a: a["published"], reverse=True)[
-            :max_articles
-        ]
+    # ── Private ───────────────────────────────────────────────────────────────
+
+    def _from_rss(self, ticker: str, cutoff: datetime) -> list[dict]:
+        articles: list[dict] = []
+        for template in RSS_FEEDS_TICKER:
+            try:
+                feed = feedparser.parse(template.format(ticker=ticker))
+                for entry in feed.entries:
+                    published = entry.get("published_parsed")
+                    pub_date  = datetime(*published[:6]) if published else datetime.now()
+                    if pub_date < cutoff:
+                        continue
+                    articles.append({
+                        "title":     entry.get("title", ""),
+                        "summary":   entry.get("summary", ""),
+                        "link":      entry.get("link", ""),
+                        "published": pub_date,
+                        "source":    feed.feed.get("title", "Yahoo Finance"),
+                    })
+            except Exception as exc:
+                logger.debug("RSS fetch failed %s: %s", ticker, exc)
+        return articles
+
+    def _from_yfinance(self, ticker: str, cutoff: datetime) -> list[dict]:
+        """yfinance.Ticker.news returns articles curated specifically for the ticker."""
+        articles: list[dict] = []
+        try:
+            news = yf.Ticker(ticker).news or []
+            for item in news:
+                pub_date = datetime.fromtimestamp(item.get("providerPublishTime", 0))
+                if pub_date < cutoff:
+                    continue
+                articles.append({
+                    "title":     item.get("title", ""),
+                    "summary":   "",
+                    "link":      item.get("link", ""),
+                    "published": pub_date,
+                    "source":    item.get("publisher", "Unknown"),
+                })
+        except Exception as exc:
+            logger.debug("yfinance news failed %s: %s", ticker, exc)
+        return articles
+
+    @staticmethod
+    def _is_relevant(title: str, ticker: str, company: str) -> bool:
+        """Return True if the title clearly refers to this ticker."""
+        title_lower = title.lower()
+        if ticker.lower() in title_lower:
+            return True
+        if company and company.lower().split()[0] in title_lower:
+            # Match on primary word: "Apple" matches "Apple's", "Apple Inc"
+            return True
+        # Also catch cashtag format e.g. $AAPL
+        if f"${ticker.lower()}" in title_lower:
+            return True
+        return False
