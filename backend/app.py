@@ -37,6 +37,14 @@ class BreakdownResponse(BaseModel):
     momentum: float
 
 
+class CrowdVsInsidersResponse(BaseModel):
+    label: str        # human-readable verdict
+    divergence: float # insider_score - crowd_score
+    insider_score: float
+    crowd_score: float
+    description: str  # plain-English explanation shown in UI
+
+
 class SignalResponse(BaseModel):
     ticker: str
     price: Optional[float]
@@ -45,6 +53,7 @@ class SignalResponse(BaseModel):
     score: float
     confidence: float
     breakdown: BreakdownResponse
+    crowd_vs_insiders: CrowdVsInsidersResponse
     headlines: list[str]
     politician_activity: str
     volume: Optional[int] = None
@@ -153,6 +162,10 @@ class AppState:
                         "political": sig.breakdown.politician_score,
                         "momentum": sig.breakdown.momentum_score,
                     },
+                    "crowd_vs_insiders": _crowd_vs_insiders(
+                        sig.breakdown.politician_score,
+                        sig.breakdown.social_sentiment_score,
+                    ),
                     "headlines": sig.top_headlines[:5],
                     "politician_activity": sig.politician_activity,
                     "volume": quote.get("volume"),
@@ -166,6 +179,59 @@ class AppState:
 
         self.latest_signals = signals
         return signals
+
+
+def _crowd_vs_insiders(political: float, social: float) -> dict:
+    """Compare politician/insider sentiment against retail crowd sentiment.
+
+    political — score from tracked politician trades (-1 to +1)
+    social    — score from Reddit/StockTwits retail crowd (-1 to +1)
+
+    Returns a plain-English label + description for the UI.
+    """
+    divergence = political - social
+
+    if political > 0.2 and social < 0.05:
+        label = "Insiders Ahead"
+        desc = (
+            "Politicians and insiders are buying while the public crowd "
+            "hasn't caught on yet — historically an early bullish signal."
+        )
+    elif social > 0.25 and political < 0.05:
+        label = "Crowd Peak"
+        desc = (
+            "Retail crowd is excited, but insiders aren't following. "
+            "Elevated crowd enthusiasm without insider confirmation — use caution."
+        )
+    elif political < -0.2 and social > -0.05:
+        label = "Insiders Out"
+        desc = (
+            "Insiders are reducing exposure while retail stays neutral or positive. "
+            "Worth watching — insiders often move first."
+        )
+    elif political < -0.15 and social < -0.15:
+        label = "Broad Selloff"
+        desc = "Both insiders and the crowd are bearish — broad negative consensus."
+    elif political > 0.15 and social > 0.15:
+        label = "Broad Confidence"
+        desc = "Both insiders and the crowd are bullish — strong consensus."
+    elif abs(divergence) < 0.15:
+        label = "Neutral"
+        desc = "No strong signal from either insiders or the retail crowd right now."
+    else:
+        label = "Mixed"
+        desc = (
+            "Insiders and the retail crowd are pointing in different directions "
+            "without a clear dominant theme."
+        )
+
+    return {
+        "label": label,
+        "divergence": round(divergence, 4),
+        "insider_score": round(political, 4),
+        "crowd_score": round(social, 4),
+        "description": desc,
+    }
 
 
 state = AppState()

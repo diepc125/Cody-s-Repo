@@ -5,6 +5,14 @@ export interface Breakdown {
   momentum: number;
 }
 
+export interface CrowdVsInsiders {
+  label: string;
+  divergence: number;
+  insider_score: number;
+  crowd_score: number;
+  description: string;
+}
+
 export interface StockSignal {
   ticker: string;
   price: number | null;
@@ -13,6 +21,7 @@ export interface StockSignal {
   score: number;
   confidence: number;
   breakdown: Breakdown;
+  crowd_vs_insiders: CrowdVsInsiders;
   headlines: string[];
   politician_activity: string;
   volume: number | null;

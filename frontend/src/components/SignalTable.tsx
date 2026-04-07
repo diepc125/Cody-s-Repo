@@ -62,6 +62,18 @@ function formatMarketCap(cap: number | null): string {
   return "$" + cap.toLocaleString();
 }
 
+function crowdBadgeClass(label: string): string {
+  switch (label) {
+    case "Insiders Ahead":  return "cvi-insiders-ahead";
+    case "Broad Confidence": return "cvi-broad-bull";
+    case "Crowd Peak":      return "cvi-crowd-peak";
+    case "Insiders Out":    return "cvi-insiders-out";
+    case "Broad Selloff":   return "cvi-broad-bear";
+    case "Neutral":         return "cvi-neutral";
+    default:                return "cvi-mixed";
+  }
+}
+
 export function SignalTable({ signals, onSelect, selected }: SignalTableProps) {
   const sorted = Object.values(signals).sort(
     (a, b) => Math.abs(b.score) - Math.abs(a.score)
@@ -83,6 +95,7 @@ export function SignalTable({ signals, onSelect, selected }: SignalTableProps) {
               <th className="col-signal">Signal</th>
               <th className="col-score">Score</th>
               <th className="col-confidence">Conf.</th>
+              <th className="col-cvi">Crowd vs. Insiders</th>
               <th className="col-volume">Volume</th>
               <th className="col-mktcap">Mkt Cap</th>
             </tr>
@@ -138,13 +151,23 @@ export function SignalTable({ signals, onSelect, selected }: SignalTableProps) {
                     </span>
                   </div>
                 </td>
+                <td className="col-cvi">
+                  {s.crowd_vs_insiders ? (
+                    <span
+                      className={`cvi-badge ${crowdBadgeClass(s.crowd_vs_insiders.label)}`}
+                      title={s.crowd_vs_insiders.description}
+                    >
+                      {s.crowd_vs_insiders.label}
+                    </span>
+                  ) : "—"}
+                </td>
                 <td className="col-volume">{formatVolume(s.volume)}</td>
                 <td className="col-mktcap">{formatMarketCap(s.market_cap)}</td>
               </tr>
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={8} className="empty-state">
+                <td colSpan={9} className="empty-state">
                   Waiting for market data...
                 </td>
               </tr>

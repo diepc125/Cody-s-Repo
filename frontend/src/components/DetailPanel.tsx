@@ -1,5 +1,5 @@
-import { BarChart3, Newspaper, Users, TrendingUp } from "lucide-react";
-import type { StockSignal } from "../types";
+import { BarChart3, Newspaper, Users, TrendingUp, Eye } from "lucide-react";
+import type { StockSignal, CrowdVsInsiders } from "../types";
 
 interface DetailPanelProps {
   signal: StockSignal | null;
@@ -37,6 +37,69 @@ function ScoreBar({
         {value >= 0 ? "+" : ""}
         {value.toFixed(2)}
       </span>
+    </div>
+  );
+}
+
+function CrowdVsInsidersBlock({ cvi }: { cvi: CrowdVsInsiders }) {
+  const labelClass = {
+    "Insiders Ahead":   "cvi-insiders-ahead",
+    "Broad Confidence": "cvi-broad-bull",
+    "Crowd Peak":       "cvi-crowd-peak",
+    "Insiders Out":     "cvi-insiders-out",
+    "Broad Selloff":    "cvi-broad-bear",
+    "Neutral":          "cvi-neutral",
+    "Mixed":            "cvi-mixed",
+  }[cvi.label] ?? "cvi-mixed";
+
+  // Map score -1..+1 to 0..100% for the gauge bars
+  const insiderPct = ((cvi.insider_score + 1) / 2) * 100;
+  const crowdPct   = ((cvi.crowd_score   + 1) / 2) * 100;
+
+  return (
+    <div className="detail-section">
+      <h4 className="section-title">
+        <Eye size={13} style={{ display: "inline", marginRight: 5 }} />
+        Crowd vs. Insiders
+      </h4>
+      <div className="cvi-verdict">
+        <span className={`cvi-badge cvi-badge-lg ${labelClass}`}>{cvi.label}</span>
+        <p className="cvi-description">{cvi.description}</p>
+      </div>
+      <div className="cvi-bars">
+        <div className="cvi-bar-row">
+          <span className="cvi-bar-label">Insiders</span>
+          <div className="cvi-bar-track">
+            <div className="cvi-bar-center" />
+            <div
+              className={`cvi-bar-fill ${cvi.insider_score >= 0 ? "positive" : "negative"}`}
+              style={{
+                left:  cvi.insider_score >= 0 ? "50%" : `${insiderPct}%`,
+                width: `${Math.abs(insiderPct - 50)}%`,
+              }}
+            />
+          </div>
+          <span className={`cvi-bar-val ${cvi.insider_score >= 0 ? "text-gain" : "text-loss"}`}>
+            {cvi.insider_score >= 0 ? "+" : ""}{cvi.insider_score.toFixed(2)}
+          </span>
+        </div>
+        <div className="cvi-bar-row">
+          <span className="cvi-bar-label">Crowd</span>
+          <div className="cvi-bar-track">
+            <div className="cvi-bar-center" />
+            <div
+              className={`cvi-bar-fill ${cvi.crowd_score >= 0 ? "positive" : "negative"}`}
+              style={{
+                left:  cvi.crowd_score >= 0 ? "50%" : `${crowdPct}%`,
+                width: `${Math.abs(crowdPct - 50)}%`,
+              }}
+            />
+          </div>
+          <span className={`cvi-bar-val ${cvi.crowd_score >= 0 ? "text-gain" : "text-loss"}`}>
+            {cvi.crowd_score >= 0 ? "+" : ""}{cvi.crowd_score.toFixed(2)}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -89,6 +152,11 @@ export function DetailPanel({ signal }: DetailPanelProps) {
             icon={<TrendingUp size={13} />}
           />
         </div>
+
+        {/* Crowd vs Insiders */}
+        {signal.crowd_vs_insiders && (
+          <CrowdVsInsidersBlock cvi={signal.crowd_vs_insiders} />
+        )}
 
         {/* Price info */}
         {signal.price != null && (
