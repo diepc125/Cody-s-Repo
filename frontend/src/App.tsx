@@ -99,7 +99,7 @@ function App() {
             {/* ── Social Buzz ── */}
             {activeTab === "social" && (
               <div className="tab-pane full-pane">
-                <SocialPanel signals={signals} selectedTicker={selectedTicker} />
+                <SocialPanel signals={signals} />
               </div>
             )}
 

@@ -15,7 +15,6 @@ interface SocialData {
 
 interface SocialPanelProps {
   signals: Record<string, StockSignal>;
-  selectedTicker: string | null;
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -128,10 +127,8 @@ function SocialCard({ ticker }: { ticker: string }) {
   );
 }
 
-export function SocialPanel({ signals, selectedTicker }: SocialPanelProps) {
-  const tickers = selectedTicker
-    ? [selectedTicker]
-    : Object.keys(signals).slice(0, 6);
+export function SocialPanel({ signals }: SocialPanelProps) {
+  const tickers = Object.keys(signals);
 
   return (
     <div className="social-panel">
