@@ -29,8 +29,8 @@ _HEADERS = {
 }
 
 _LOOKBACK_DAYS = 90
-_MAX_FILINGS = 5       # Form 4 filings to parse per ticker per call
-_CACHE_TTL = 3600      # seconds — EDGAR data changes at most a few times a day
+_MAX_FILINGS = 3       # Form 4 filings to parse per on-demand fetch
+_CACHE_TTL = 3600      # seconds — Form 4s are filed at most a few times a day
 
 
 # ── CIK map ───────────────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ def _load_cik_map() -> None:
     if _cik_map:
         return
     try:
-        resp = requests.get(_TICKERS_URL, headers=_HEADERS, timeout=15)
+        resp = requests.get(_TICKERS_URL, headers=_HEADERS, timeout=10)
         resp.raise_for_status()
         for entry in resp.json().values():
             ticker = entry["ticker"].upper()
@@ -188,7 +188,7 @@ class InsiderTracker:
         """Return (accessionNumber, primaryDocument) pairs for recent Form 4s."""
         url = f"{_EDGAR_BASE}/submissions/CIK{cik}.json"
         try:
-            resp = self._session.get(url, timeout=15)
+            resp = self._session.get(url, timeout=8)
             resp.raise_for_status()
             data = resp.json()
         except Exception as exc:
@@ -215,7 +215,7 @@ class InsiderTracker:
         acc_nodash = accession.replace("-", "")
         url = f"{_ARCHIVE_BASE}/{int(cik)}/{acc_nodash}/{primary_doc}"
         try:
-            resp = self._session.get(url, timeout=15)
+            resp = self._session.get(url, timeout=8)
             resp.raise_for_status()
             return resp.content
         except Exception as exc:

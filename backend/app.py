@@ -136,13 +136,13 @@ class AppState:
                         f" ({', '.join(pol.notable_traders[:3])})"
                     )
 
-                # SEC Form 4: C-suite / director insider trades
-                insider_sig = state.insider_tracker.get_insider_signal(ticker)
-                state.latest_insider[ticker] = state.insider_tracker.to_dict(insider_sig)
+                # Use cached Form 4 score if available; don't block the poll cycle
+                # fetching it — the /api/insider/{ticker} endpoint handles that lazily.
+                cached_insider = state.latest_insider.get(ticker)
+                form4_score = cached_insider["score"] if cached_insider else 0.0
 
-                # Combined insider score: politician trades (35%) + SEC Form 4 (65%)
-                # Form 4 weighted higher — it covers all insiders, not just politicians
-                combined_insider = pol_score * 0.35 + insider_sig.score * 0.65
+                # Combined insider: politician trades (35%) + SEC Form 4 (65%)
+                combined_insider = pol_score * 0.35 + form4_score * 0.65
 
                 history = self.stock_fetcher.fetch_price_history(ticker, days=30)
                 quote = quotes.get(ticker, {})
@@ -393,11 +393,11 @@ def get_social(ticker: str):
 
 
 @app.get("/api/insider/{ticker}")
-def get_insider(ticker: str):
-    """Get SEC Form 4 insider trade signal for a ticker."""
+async def get_insider(ticker: str):
+    """Get SEC Form 4 insider trade signal for a ticker (fetched lazily, cached 1h)."""
     ticker = ticker.upper()
     if ticker not in state.latest_insider:
-        sig = state.insider_tracker.get_insider_signal(ticker)
+        sig = await asyncio.to_thread(state.insider_tracker.get_insider_signal, ticker)
         state.latest_insider[ticker] = state.insider_tracker.to_dict(sig)
     return state.latest_insider[ticker]
 
