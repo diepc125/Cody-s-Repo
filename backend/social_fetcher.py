@@ -37,7 +37,7 @@ class RedditFetcher:
         self.session = requests.Session()
         self.session.headers.update(REDDIT_HEADERS)
         self._cache: dict[str, tuple[list, float]] = {}
-        self._cache_ttl = 900  # 15 minutes — Reddit rate limits anonymous access hard
+        self._cache_ttl = 3600  # 1 hour — be a good citizen, Reddit data doesn't change that fast
 
     def fetch_ticker_posts(self, ticker: str, max_posts: int = 30) -> list[dict]:
         """Fetch Reddit posts that are specifically about *ticker*.
