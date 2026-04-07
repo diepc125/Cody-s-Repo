@@ -493,56 +493,90 @@ body {
 }
 
 /* ── Watchlist ──────────────────────────────────────────── */
+.watchlist-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.watchlist-heading {
+  padding: 12px 14px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
+}
+
 .watchlist {
   overflow-y: auto;
+  flex: 1;
 }
 
 .watchlist-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
+  gap: 8px;
+  padding: 10px 12px;
   cursor: pointer;
   border-bottom: 1px solid var(--border);
   transition: background 0.1s;
 }
 
-.watchlist-item:hover {
-  background: var(--bg-hover);
-}
-
+.watchlist-item:hover { background: var(--bg-hover); }
 .watchlist-item.selected {
   background: var(--accent-dim);
   border-left: 2px solid var(--accent);
+  padding-left: 10px;
 }
+
+/* Signal dot */
+.signal-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot-strong-buy  { background: #16a34a; box-shadow: 0 0 4px rgba(22,163,74,0.6); }
+.dot-buy         { background: var(--gain); }
+.dot-hold        { background: var(--hold); }
+.dot-sell        { background: var(--loss); }
+.dot-strong-sell { background: #dc2626; box-shadow: 0 0 4px rgba(220,38,38,0.6); }
 
 .watchlist-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
 }
 
 .watchlist-ticker {
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 12px;
   color: var(--text-primary);
 }
 
 .watchlist-price {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: var(--text-secondary);
+  color: var(--text-dim);
 }
 
 .watchlist-change {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  flex-shrink: 0;
 }
 
 /* ── Signal Table ───────────────────────────────────────── */
 .signal-table-panel {
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
 }
 
 .table-wrapper {
@@ -554,7 +588,7 @@ body {
 .signal-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .signal-table thead {
@@ -565,30 +599,32 @@ body {
 
 .signal-table th {
   background: var(--bg-tertiary);
-  color: var(--text-muted);
+  color: var(--text-dim);
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.7px;
-  padding: 6px 12px;
+  letter-spacing: 0.8px;
+  padding: 8px 16px;
   text-align: left;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+  cursor: default;
 }
 
 .signal-table th.col-price,
 .signal-table th.col-change,
 .signal-table th.col-score,
 .signal-table th.col-confidence,
-.signal-table th.col-volume,
-.signal-table th.col-mktcap {
+.signal-table th.col-volume {
   text-align: right;
 }
 
+/* Rows — taller, more breathing room */
 .signal-table td {
-  padding: 7px 12px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .signal-row {
@@ -596,79 +632,80 @@ body {
   transition: background 0.1s;
 }
 
-.signal-row:hover {
-  background: var(--bg-hover);
-}
+.signal-row:hover  { background: var(--bg-hover); }
+.signal-row.selected { background: var(--accent-dim); }
 
-.signal-row.selected {
-  background: var(--accent-dim);
-}
+/* Ticker cell — stacked symbol + company name */
+.col-ticker { min-width: 130px; }
 
 .ticker-symbol {
+  display: block;
   font-weight: 700;
+  font-size: 14px;
   color: var(--text-primary);
-}
-
-.col-price,
-.col-change,
-.col-score,
-.col-volume,
-.col-mktcap {
-  text-align: right;
-  font-family: var(--font-mono);
-}
-
-.col-confidence {
-  text-align: right;
-  width: 90px;
-}
-
-.col-change {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-}
-
-/* Signal badges */
-.signal-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
   letter-spacing: 0.3px;
 }
 
-.signal-strong-buy {
-  color: #15803d;
-  background: var(--gain-bg);
-  border: 1px solid rgba(34, 197, 94, 0.25);
+.ticker-company {
+  display: block;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 1px;
 }
 
-.signal-buy {
-  color: var(--gain);
-  background: var(--gain-bg);
+/* Price — the hero number */
+.col-price { text-align: right; }
+.price-value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-.signal-hold {
-  color: var(--hold);
-  background: var(--hold-bg);
+/* Change */
+.col-change {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
 }
 
-.signal-sell {
-  color: var(--loss);
-  background: var(--loss-bg);
+/* Signal badges */
+.col-signal { min-width: 100px; }
+
+.signal-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
 }
 
-.signal-strong-sell {
-  color: #dc2626;
-  background: var(--loss-bg);
-  border: 1px solid rgba(239, 68, 68, 0.25);
+.signal-strong-buy  { color: #4ade80; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); }
+.signal-buy         { color: var(--gain); background: var(--gain-bg); }
+.signal-hold        { color: var(--hold); background: var(--hold-bg); }
+.signal-sell        { color: var(--loss); background: var(--loss-bg); }
+.signal-strong-sell { color: #f87171; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); }
+
+/* Confidence — plain number, no bar */
+.col-confidence { text-align: right; width: 60px; }
+.conf-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
-/* Confidence bar */
+/* Volume */
+.col-volume { text-align: right; }
+.vol-value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Legacy confidence bar — keep for any old references */
 .confidence-bar-wrapper {
   position: relative;
   width: 60px;
@@ -683,8 +720,7 @@ body {
 
 .confidence-bar-fill {
   position: absolute;
-  left: 0;
-  top: 0;
+  left: 0; top: 0;
   height: 100%;
   background: var(--accent);
   opacity: 0.4;

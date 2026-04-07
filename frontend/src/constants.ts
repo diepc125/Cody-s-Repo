@@ -1,0 +1,17 @@
+export const COMPANY_NAMES: Record<string, string> = {
+  AAPL:  "Apple",
+  MSFT:  "Microsoft",
+  GOOGL: "Alphabet",
+  AMZN:  "Amazon",
+  TSLA:  "Tesla",
+  NVDA:  "NVIDIA",
+  META:  "Meta",
+  JPM:   "JPMorgan",
+  BAC:   "Bank of America",
+  DIS:   "Disney",
+  NFLX:  "Netflix",
+  AMD:   "AMD",
+  INTC:  "Intel",
+  PFE:   "Pfizer",
+  XOM:   "ExxonMobil",
+};

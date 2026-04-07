@@ -1,5 +1,6 @@
 import { ChevronUp, ChevronDown } from "lucide-react";
 import type { StockSignal } from "../types";
+import { COMPANY_NAMES } from "../constants";
 
 interface SignalTableProps {
   signals: Record<string, StockSignal>;
@@ -31,7 +32,9 @@ function signalLabel(signal: string): string {
 
 function formatPrice(price: number | null): string {
   if (price == null) return "—";
-  return price.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+  return price.toLocaleString("en-US", {
+    style: "currency", currency: "USD", minimumFractionDigits: 2,
+  });
 }
 
 function formatVolume(vol: number | null): string {
@@ -54,20 +57,16 @@ function crowdBadgeClass(label: string): string {
   }
 }
 
-/** Visual bar showing signal strength from bearish (left) to bullish (right). */
 function StrengthBar({ score }: { score: number }) {
   const isPositive = score >= 0;
-  const pct = Math.abs(score) * 50; // 0–50% of half the bar
+  const pct = Math.abs(score) * 50;
   return (
-    <div className="strength-bar-wrap" title={`Raw strength: ${score >= 0 ? "+" : ""}${score.toFixed(3)}`}>
+    <div className="strength-bar-wrap" title={`${score >= 0 ? "+" : ""}${score.toFixed(3)}`}>
       <div className="strength-bar-track">
         <div className="strength-bar-center" />
         <div
           className={`strength-bar-fill ${isPositive ? "positive" : "negative"}`}
-          style={{
-            left:  isPositive ? "50%" : `${50 - pct}%`,
-            width: `${pct}%`,
-          }}
+          style={{ left: isPositive ? "50%" : `${50 - pct}%`, width: `${pct}%` }}
         />
       </div>
     </div>
@@ -86,14 +85,14 @@ export function SignalTable({ signals, onSelect, selected }: SignalTableProps) {
       <table className="signal-table">
         <thead>
           <tr>
-            <th className="col-ticker">Symbol</th>
+            <th className="col-ticker">Instrument</th>
             <th className="col-price">Price</th>
-            <th className="col-change" title="Today's price change">Change</th>
-            <th className="col-signal" title="Overall buy / sell / hold recommendation">Signal</th>
-            <th className="col-score"  title="Signal strength from bearish (left) to bullish (right)">Strength</th>
-            <th className="col-confidence" title="How much data is backing this signal — more sources = higher confidence">Confidence</th>
-            <th className="col-cvi"    title="Whether insiders (politicians + executives) are moving differently from the general public">Crowd vs. Insiders</th>
-            <th className="col-volume" title="Shares traded today">Volume</th>
+            <th className="col-change" title="Today's price change">Chg %</th>
+            <th className="col-signal" title="Overall recommendation">Signal</th>
+            <th className="col-score" title="Signal strength — bearish left, bullish right">Strength</th>
+            <th className="col-confidence" title="How much data backs this signal">Conf.</th>
+            <th className="col-cvi" title="Whether insiders are moving differently from the crowd">Crowd vs. Insiders</th>
+            <th className="col-volume">Volume</th>
           </tr>
         </thead>
         <tbody>
@@ -103,38 +102,47 @@ export function SignalTable({ signals, onSelect, selected }: SignalTableProps) {
               className={`signal-row ${selected === s.ticker ? "selected" : ""}`}
               onClick={() => onSelect(s.ticker)}
             >
+              {/* Instrument: ticker + company name */}
               <td className="col-ticker">
                 <span className="ticker-symbol">{s.ticker}</span>
+                {COMPANY_NAMES[s.ticker] && (
+                  <span className="ticker-company">{COMPANY_NAMES[s.ticker]}</span>
+                )}
               </td>
 
-              <td className="col-price">{formatPrice(s.price)}</td>
+              {/* Price — hero number */}
+              <td className="col-price">
+                <span className="price-value">{formatPrice(s.price)}</span>
+              </td>
 
+              {/* Change */}
               <td className={`col-change ${(s.change_pct ?? 0) >= 0 ? "text-gain" : "text-loss"}`}>
                 {s.change_pct != null ? (
                   <>
-                    {s.change_pct >= 0 ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                    {s.change_pct >= 0 ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                     {Math.abs(s.change_pct).toFixed(2)}%
                   </>
                 ) : "—"}
               </td>
 
+              {/* Signal badge */}
               <td className="col-signal">
                 <span className={`signal-badge ${signalClass(s.signal)}`}>
                   {signalLabel(s.signal)}
                 </span>
               </td>
 
+              {/* Strength bar */}
               <td className="col-score">
                 <StrengthBar score={s.score} />
               </td>
 
+              {/* Confidence — plain number, no bar */}
               <td className="col-confidence">
-                <div className="confidence-bar-wrapper">
-                  <div className="confidence-bar-fill" style={{ width: `${s.confidence * 100}%` }} />
-                  <span className="confidence-label">{(s.confidence * 100).toFixed(0)}%</span>
-                </div>
+                <span className="conf-value">{(s.confidence * 100).toFixed(0)}%</span>
               </td>
 
+              {/* CvI */}
               <td className="col-cvi">
                 {s.crowd_vs_insiders ? (
                   <span
@@ -146,9 +154,12 @@ export function SignalTable({ signals, onSelect, selected }: SignalTableProps) {
                 ) : "—"}
               </td>
 
-              <td className="col-volume">{formatVolume(s.volume)}</td>
+              <td className="col-volume">
+                <span className="vol-value">{formatVolume(s.volume)}</span>
+              </td>
             </tr>
           ))}
+
           {sorted.length === 0 && (
             <tr>
               <td colSpan={8} className="empty-state">
