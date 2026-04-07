@@ -1,5 +1,103 @@
-import { BarChart3, Newspaper, Users, TrendingUp, Eye } from "lucide-react";
+import { BarChart3, Newspaper, Users, TrendingUp, Eye, Building2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { StockSignal, CrowdVsInsiders } from "../types";
+
+interface InsiderTransaction {
+  name: string;
+  title: string;
+  type: "Buy" | "Sell" | "Other";
+  shares: number;
+  price: number | null;
+  value: number | null;
+  date: string;
+  days_ago: number;
+}
+
+interface InsiderData {
+  score: number;
+  buy_shares: number;
+  sell_shares: number;
+  transaction_count: number;
+  transactions: InsiderTransaction[];
+  error?: string;
+}
+
+function InsiderTradesBlock({ ticker }: { ticker: string }) {
+  const [data, setData] = useState<InsiderData | null>(null);
+
+  useEffect(() => {
+    setData(null);
+    fetch(`/api/insider/${ticker}`)
+      .then((r) => r.json())
+      .then(setData)
+      .catch(() => setData(null));
+  }, [ticker]);
+
+  if (!data) {
+    return (
+      <div className="detail-section">
+        <h4 className="section-title">
+          <Building2 size={13} style={{ display: "inline", marginRight: 5 }} />
+          SEC Insider Trades
+        </h4>
+        <p className="cvi-description">Loading…</p>
+      </div>
+    );
+  }
+
+  if (data.error || data.transaction_count === 0) {
+    return (
+      <div className="detail-section">
+        <h4 className="section-title">
+          <Building2 size={13} style={{ display: "inline", marginRight: 5 }} />
+          SEC Insider Trades
+        </h4>
+        <p className="cvi-description">
+          {data.error ?? "No filings in the last 90 days."}
+        </p>
+      </div>
+    );
+  }
+
+  const fmt = (n: number) =>
+    n >= 1e6 ? `$${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `$${(n / 1e3).toFixed(0)}K` : `$${n}`;
+
+  return (
+    <div className="detail-section">
+      <h4 className="section-title">
+        <Building2 size={13} style={{ display: "inline", marginRight: 5 }} />
+        SEC Insider Trades
+        <span className="panel-meta" style={{ marginLeft: 8 }}>
+          last 90 days
+        </span>
+      </h4>
+      <div className="insider-summary">
+        <span className="text-gain">
+          ▲ {data.buy_shares.toLocaleString()} bought
+        </span>
+        <span className="text-loss">
+          ▼ {data.sell_shares.toLocaleString()} sold
+        </span>
+      </div>
+      <ul className="insider-list">
+        {data.transactions.slice(0, 6).map((t, i) => (
+          <li key={i} className="insider-item">
+            <span className={`insider-type ${t.type === "Buy" ? "text-gain" : t.type === "Sell" ? "text-loss" : "text-dim"}`}>
+              {t.type === "Buy" ? "▲" : t.type === "Sell" ? "▼" : "·"}
+            </span>
+            <span className="insider-name">{t.name}</span>
+            <span className="insider-meta">
+              {t.title ? `${t.title} · ` : ""}
+              {t.shares.toLocaleString()} shares
+              {t.value ? ` · ${fmt(t.value)}` : ""}
+              {" · "}{t.days_ago}d ago
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 interface DetailPanelProps {
   signal: StockSignal | null;
@@ -157,6 +255,9 @@ export function DetailPanel({ signal }: DetailPanelProps) {
         {signal.crowd_vs_insiders && (
           <CrowdVsInsidersBlock cvi={signal.crowd_vs_insiders} />
         )}
+
+        {/* SEC Form 4 insider trades */}
+        <InsiderTradesBlock ticker={signal.ticker} />
 
         {/* Price info */}
         {signal.price != null && (

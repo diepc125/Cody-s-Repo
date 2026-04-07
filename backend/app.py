@@ -24,6 +24,7 @@ from trading_algorithm.political_tracker import PoliticalTradeTracker
 from trading_algorithm.sentiment import SentimentAnalyzer, SentimentTracker
 from trading_algorithm.signals import SignalGenerator
 from social_fetcher import SocialSentimentAggregator
+from sec_insider import InsiderTracker
 import database
 
 logging.basicConfig(level=logging.WARNING)
@@ -92,9 +93,11 @@ class AppState:
         self.political_tracker = PoliticalTradeTracker()
         self.signal_generator = SignalGenerator()
         self.social_aggregator = SocialSentimentAggregator()
+        self.insider_tracker = InsiderTracker()
         self.latest_signals: dict[str, dict] = {}
         self.latest_quotes: dict[str, dict] = {}
         self.latest_social: dict[str, dict] = {}
+        self.latest_insider: dict[str, dict] = {}
         self.ws_clients: set[WebSocket] = set()
         self._poll_task: Optional[asyncio.Task] = None
 
@@ -133,6 +136,14 @@ class AppState:
                         f" ({', '.join(pol.notable_traders[:3])})"
                     )
 
+                # SEC Form 4: C-suite / director insider trades
+                insider_sig = state.insider_tracker.get_insider_signal(ticker)
+                state.latest_insider[ticker] = state.insider_tracker.to_dict(insider_sig)
+
+                # Combined insider score: politician trades (35%) + SEC Form 4 (65%)
+                # Form 4 weighted higher — it covers all insiders, not just politicians
+                combined_insider = pol_score * 0.35 + insider_sig.score * 0.65
+
                 history = self.stock_fetcher.fetch_price_history(ticker, days=30)
                 quote = quotes.get(ticker, {})
 
@@ -164,7 +175,7 @@ class AppState:
                         "momentum": sig.breakdown.momentum_score,
                     },
                     "crowd_vs_insiders": _crowd_vs_insiders(
-                        sig.breakdown.politician_score,
+                        combined_insider,
                         sig.breakdown.social_sentiment_score,
                     ),
                     "headlines": sig.top_headlines[:5],
@@ -379,6 +390,16 @@ def get_social(ticker: str):
     social = state.social_aggregator.get_social_signal(ticker, state.sentiment_analyzer)
     state.latest_social[ticker] = social
     return social
+
+
+@app.get("/api/insider/{ticker}")
+def get_insider(ticker: str):
+    """Get SEC Form 4 insider trade signal for a ticker."""
+    ticker = ticker.upper()
+    if ticker not in state.latest_insider:
+        sig = state.insider_tracker.get_insider_signal(ticker)
+        state.latest_insider[ticker] = state.insider_tracker.to_dict(sig)
+    return state.latest_insider[ticker]
 
 
 @app.get("/api/gpu")
