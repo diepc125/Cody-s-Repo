@@ -105,17 +105,33 @@ interface DetailPanelProps {
   signal: StockSignal | null;
 }
 
-function ScoreBar({
-  label,
-  value,
-  icon,
-}: {
+function scoreVerdict(value: number, dimension: string): string {
+  const strong = Math.abs(value) >= 0.3;
+  const mild   = Math.abs(value) >= 0.1;
+  const bull   = value >= 0;
+
+  const map: Record<string, [string, string, string, string]> = {
+    news:      ["Very positive news coverage", "Mostly positive coverage", "Mostly negative coverage", "Very negative news coverage"],
+    social:    ["Retail crowd strongly bullish", "Retail crowd leaning bullish", "Retail crowd leaning bearish", "Retail crowd strongly bearish"],
+    political: ["Congressional insiders buying heavily", "Some insider buying activity", "Some insider selling activity", "Congressional insiders selling heavily"],
+    momentum:  ["Strong upward price momentum", "Mild upward momentum", "Mild downward momentum", "Strong downward pressure"],
+  };
+
+  const [sb, mb, ms, ss] = map[dimension] ?? ["Strongly positive", "Mildly positive", "Mildly negative", "Strongly negative"];
+  if (!mild) return "Neutral — no clear signal";
+  if (bull) return strong ? sb : mb;
+  return strong ? ss : ms;
+}
+
+function ScoreBar({ label, value, icon, dimension }: {
   label: string;
   value: number;
   icon: React.ReactNode;
+  dimension: string;
 }) {
-  const pct = ((value + 1) / 2) * 100; // map -1..+1 to 0..100%
+  const pct        = ((value + 1) / 2) * 100;
   const isPositive = value >= 0;
+  const verdict    = scoreVerdict(value, dimension);
 
   return (
     <div className="score-row">
@@ -127,16 +143,10 @@ function ScoreBar({
         <div className="score-bar-center" />
         <div
           className={`score-bar-fill ${isPositive ? "positive" : "negative"}`}
-          style={{
-            left: isPositive ? "50%" : `${pct}%`,
-            width: `${Math.abs(pct - 50)}%`,
-          }}
+          style={{ left: isPositive ? "50%" : `${pct}%`, width: `${Math.abs(pct - 50)}%` }}
         />
       </div>
-      <span className={`score-value ${isPositive ? "text-gain" : "text-loss"}`}>
-        {value >= 0 ? "+" : ""}
-        {value.toFixed(2)}
-      </span>
+      <span className="score-verdict">{verdict}</span>
     </div>
   );
 }
@@ -212,7 +222,8 @@ export function DetailPanel({ signal }: DetailPanelProps) {
           <span className="panel-title">Details</span>
         </div>
         <div className="empty-detail">
-          Select an instrument from the screener to view analysis breakdown.
+          <p>No stock selected.</p>
+          <p className="empty-detail-hint">Go to the Screener tab and click any row to see the full breakdown here.</p>
         </div>
       </div>
     );
@@ -221,7 +232,7 @@ export function DetailPanel({ signal }: DetailPanelProps) {
   return (
     <div className="panel detail-panel">
       <div className="panel-header">
-        <span className="panel-title">{signal.ticker} — Analysis</span>
+        <span className="panel-title">{signal.ticker} — Signal Breakdown</span>
         <span className="panel-meta">
           {new Date(signal.timestamp).toLocaleTimeString()}
         </span>
@@ -230,27 +241,11 @@ export function DetailPanel({ signal }: DetailPanelProps) {
       <div className="detail-content">
         {/* Score breakdown */}
         <div className="detail-section">
-          <h4 className="section-title">Signal Breakdown</h4>
-          <ScoreBar
-            label="News Sentiment"
-            value={signal.breakdown.news}
-            icon={<Newspaper size={13} />}
-          />
-          <ScoreBar
-            label="Social Sentiment"
-            value={signal.breakdown.social}
-            icon={<Users size={13} />}
-          />
-          <ScoreBar
-            label="Political Activity"
-            value={signal.breakdown.political}
-            icon={<BarChart3 size={13} />}
-          />
-          <ScoreBar
-            label="Price Momentum"
-            value={signal.breakdown.momentum}
-            icon={<TrendingUp size={13} />}
-          />
+          <h4 className="section-title">What's Driving the Signal</h4>
+          <ScoreBar label="News Coverage"         value={signal.breakdown.news}      icon={<Newspaper  size={13} />} dimension="news" />
+          <ScoreBar label="Social Media Mood"     value={signal.breakdown.social}    icon={<Users      size={13} />} dimension="social" />
+          <ScoreBar label="Congressional Trades"  value={signal.breakdown.political} icon={<BarChart3  size={13} />} dimension="political" />
+          <ScoreBar label="Price Momentum"        value={signal.breakdown.momentum}  icon={<TrendingUp size={13} />} dimension="momentum" />
         </div>
 
         {/* Crowd vs Insiders */}

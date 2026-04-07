@@ -1189,3 +1189,124 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ── Filter bar ─────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.filter-pills {
+  display: flex;
+  gap: 4px;
+}
+.filter-pill {
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-pill:hover { border-color: var(--border-active); color: var(--text-primary); }
+.filter-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-pill-buy.active    { background: var(--gain);   border-color: var(--gain); }
+.filter-pill-sell.active   { background: var(--loss);   border-color: var(--loss); }
+.filter-pill-hold.active   { background: #64748b;       border-color: #64748b; }
+
+.filter-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+.filter-select {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  outline: none;
+}
+.filter-select:hover { border-color: var(--border-active); }
+
+.filter-meta {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-clear {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 0.67rem;
+  cursor: pointer;
+}
+.filter-clear:hover { color: var(--text-primary); border-color: var(--border-active); }
+.filter-count {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+}
+
+/* ── Strength bar (replaces raw score number) ───────────── */
+.strength-bar-wrap { width: 80px; }
+.strength-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  position: relative;
+}
+.strength-bar-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--border-active);
+}
+.strength-bar-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 3px;
+}
+.strength-bar-fill.positive { background: var(--gain); }
+.strength-bar-fill.negative { background: var(--loss); }
+
+/* ── Score verdict text (replaces raw +0.432 number) ───── */
+.score-verdict {
+  font-size: 0.67rem;
+  color: var(--text-secondary);
+  flex: 1;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* ── Screener panel layout ──────────────────────────────── */
+.screener-pane { display: flex; flex-direction: column; }
+.screener-hint { font-size: 0.68rem; color: var(--text-dim); }
+
+/* ── Empty detail panel ─────────────────────────────────── */
+.empty-detail-hint {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
