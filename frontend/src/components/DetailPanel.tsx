@@ -215,32 +215,65 @@ function CrowdVsInsidersBlock({ cvi }: { cvi: CrowdVsInsiders }) {
   );
 }
 
+// Mean Reversion and trend-following indicators naturally conflict:
+// a crashing stock is "oversold" (reversion = buy) but also in a downtrend (momentum = sell).
+// We split the display so both stories are visible rather than averaging them to "neutral".
+const MEAN_REVERSION_NAMES = new Set(["Mean Reversion", "Bollinger %B"]);
+const TREND_NAMES           = new Set(["MACD", "OBV Trend"]);
+
 function QuantAnalysisBlock({ quant }: { quant: QuantData }) {
-  const scoreColor = quant.score >= 0.1 ? "text-gain" : quant.score <= -0.1 ? "text-loss" : "text-dim";
-  const scoreLabel = quant.score >= 0.3  ? "Strongly Bullish"
-                   : quant.score >= 0.1  ? "Leaning Bullish"
-                   : quant.score <= -0.3 ? "Strongly Bearish"
-                   : quant.score <= -0.1 ? "Leaning Bearish"
-                   : "Neutral";
+  const reversion = quant.signals.filter(s => MEAN_REVERSION_NAMES.has(s.name));
+  const trend     = quant.signals.filter(s => TREND_NAMES.has(s.name));
+
+  const avgScore = (list: typeof quant.signals) =>
+    list.length ? list.reduce((a, s) => a + s.score, 0) / list.length : 0;
+
+  const revScore  = avgScore(reversion);
+  const trendScore = avgScore(trend);
+
+  const badge = (score: number) =>
+    score >= 0.2 ? { text: "Bullish",  cls: "text-gain" }
+  : score <= -0.2 ? { text: "Bearish",  cls: "text-loss" }
+  : { text: "Mixed",   cls: "text-dim" };
+
+  const IndicatorRow = ({ s }: { s: typeof quant.signals[0] }) => (
+    <div className="quant-indicator-row">
+      <span className={`quant-indicator-dot ${s.bullish ? "quant-dot-bull" : Math.abs(s.score) < 0.05 ? "quant-dot-neutral" : "quant-dot-bear"}`} />
+      <span className="quant-indicator-name">{s.name}</span>
+      <span className="quant-indicator-verdict">{s.verdict}</span>
+    </div>
+  );
 
   return (
     <div className="detail-section">
       <h4 className="section-title">
         <FlaskConical size={13} style={{ display: "inline", marginRight: 5 }} />
         Quantitative Analysis
-        <span className={`quant-composite-badge ${scoreColor}`} style={{ marginLeft: 8 }}>
-          {scoreLabel}
-        </span>
       </h4>
+
+      {/* Mean Reversion group */}
+      <p className="quant-group-label">
+        Mean Reversion
+        <span className={`quant-composite-badge ${badge(revScore).cls}`}>
+          {badge(revScore).text}
+        </span>
+      </p>
       <div className="quant-indicators">
-        {quant.signals.map((s) => (
-          <div key={s.name} className="quant-indicator-row">
-            <span className="quant-indicator-name">{s.name}</span>
-            <span className="quant-indicator-verdict">{s.verdict}</span>
-            <span className={`quant-indicator-dot ${s.bullish ? "quant-dot-bull" : s.score === 0 ? "quant-dot-neutral" : "quant-dot-bear"}`} />
-          </div>
-        ))}
+        {reversion.map(s => <IndicatorRow key={s.name} s={s} />)}
       </div>
+
+      {/* Trend / Momentum group */}
+      <p className="quant-group-label" style={{ marginTop: 10 }}>
+        Trend &amp; Momentum
+        <span className={`quant-composite-badge ${badge(trendScore).cls}`}>
+          {badge(trendScore).text}
+        </span>
+      </p>
+      <div className="quant-indicators">
+        {trend.map(s => <IndicatorRow key={s.name} s={s} />)}
+      </div>
+
+      {/* Raw metrics */}
       <div className="quant-metrics">
         <div className="quant-metric">
           <span className="quant-metric-label">Z-Score</span>

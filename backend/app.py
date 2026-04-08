@@ -299,12 +299,14 @@ async def poll_and_broadcast():
 
 
 _SNAPSHOT_PATH = _HERE.parent / "data" / "signals_snapshot.json"
+# Bump this any time the signal schema changes — stale snapshots are discarded.
+_SNAPSHOT_VERSION = 2
 
 
 def _save_snapshot(signals: dict) -> None:
     try:
         _SNAPSHOT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        _SNAPSHOT_PATH.write_text(json.dumps(signals))
+        _SNAPSHOT_PATH.write_text(json.dumps({"v": _SNAPSHOT_VERSION, "signals": signals}))
     except Exception:
         pass
 
@@ -312,7 +314,10 @@ def _save_snapshot(signals: dict) -> None:
 def _load_snapshot() -> dict:
     try:
         if _SNAPSHOT_PATH.exists():
-            return json.loads(_SNAPSHOT_PATH.read_text())
+            data = json.loads(_SNAPSHOT_PATH.read_text())
+            if isinstance(data, dict) and data.get("v") == _SNAPSHOT_VERSION:
+                return data["signals"]
+            logger.info("Snapshot version mismatch — discarding stale cache")
     except Exception:
         pass
     return {}
