@@ -1316,3 +1316,73 @@ body {
   color: var(--text-dim);
   margin-top: 6px;
 }
+
+/* ── Quantitative Analysis ──────────────────────────────── */
+.quant-composite-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
+.quant-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.quant-indicator-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+}
+
+.quant-indicator-name {
+  width: 110px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.quant-indicator-verdict {
+  flex: 1;
+  color: var(--text-primary);
+}
+
+.quant-indicator-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.quant-dot-bull    { background: #4ade80; box-shadow: 0 0 5px rgba(74,222,128,0.5); }
+.quant-dot-bear    { background: #f87171; box-shadow: 0 0 5px rgba(248,113,113,0.5); }
+.quant-dot-neutral { background: #64748b; }
+
+.quant-metrics {
+  display: flex;
+  gap: 16px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.quant-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.quant-metric-label {
+  font-size: 0.65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quant-metric-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

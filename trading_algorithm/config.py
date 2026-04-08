@@ -66,10 +66,11 @@ STRONG_SELL_THRESHOLD = -0.35
 
 # ─── Signal weights ────────────────────────────────────────
 # How much each component contributes to the final signal (must sum to 1.0)
-WEIGHT_NEWS_SENTIMENT = 0.35
-WEIGHT_SOCIAL_SENTIMENT = 0.25
-WEIGHT_POLITICIAN_TRADES = 0.25
-WEIGHT_PRICE_MOMENTUM = 0.15
+WEIGHT_NEWS_SENTIMENT    = 0.30
+WEIGHT_SOCIAL_SENTIMENT  = 0.20
+WEIGHT_POLITICIAN_TRADES = 0.20
+WEIGHT_PRICE_MOMENTUM    = 0.10
+WEIGHT_QUANT             = 0.20
 
 # ─── Capitol Trades (politician tracking) ──────────────────
 CAPITOL_TRADES_URL = "https://www.capitoltrades.com"

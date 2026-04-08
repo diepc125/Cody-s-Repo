@@ -25,6 +25,7 @@ from trading_algorithm.sentiment import SentimentAnalyzer, SentimentTracker
 from trading_algorithm.signals import SignalGenerator
 from social_fetcher import SocialSentimentAggregator
 from sec_insider import InsiderTracker
+from trading_algorithm.quant import QuantAnalyzer
 import database
 
 logging.basicConfig(level=logging.WARNING)
@@ -37,6 +38,24 @@ class BreakdownResponse(BaseModel):
     social: float
     political: float
     momentum: float
+    quant: float = 0.0
+
+
+class QuantSignalItem(BaseModel):
+    name: str
+    verdict: str
+    score: float
+    value: float
+    bullish: bool
+
+
+class QuantResponse(BaseModel):
+    score: float
+    zscore: float = 0.0
+    macd_histogram: float = 0.0
+    pct_b: float = 0.5
+    obv_slope: float = 0.0
+    signals: list[QuantSignalItem] = []
 
 
 class CrowdVsInsidersResponse(BaseModel):
@@ -55,6 +74,7 @@ class SignalResponse(BaseModel):
     score: float
     confidence: float
     breakdown: BreakdownResponse
+    quant: QuantResponse = QuantResponse(score=0.0)
     crowd_vs_insiders: CrowdVsInsidersResponse
     headlines: list[str]
     politician_activity: str
@@ -94,6 +114,7 @@ class AppState:
         self.signal_generator = SignalGenerator()
         self.social_aggregator = SocialSentimentAggregator()
         self.insider_tracker = InsiderTracker()
+        self.quant_analyzer = QuantAnalyzer()
         self.latest_signals: dict[str, dict] = {}
         self.latest_quotes: dict[str, dict] = {}
         self.latest_social: dict[str, dict] = {}
@@ -144,8 +165,12 @@ class AppState:
                 # Combined insider: politician trades (35%) + SEC Form 4 (65%)
                 combined_insider = pol_score * 0.35 + form4_score * 0.65
 
-                history = self.stock_fetcher.fetch_price_history(ticker, days=30)
+                # Fetch 60 days so MACD (26-period EMA) has enough history
+                history = self.stock_fetcher.fetch_price_history(ticker, days=60)
                 quote = quotes.get(ticker, {})
+
+                quant_result = self.quant_analyzer.analyze(history)
+                quant_dict   = self.quant_analyzer.to_dict(quant_result)
 
                 sig = self.signal_generator.generate_signal(
                     ticker=ticker,
@@ -159,6 +184,7 @@ class AppState:
                     politician_trade_count=pol_count,
                     top_headlines=news_sentiment.top_headlines,
                     politician_summary=pol_summary,
+                    quant_score=quant_result.score,
                 )
 
                 signals[ticker] = {
@@ -173,7 +199,9 @@ class AppState:
                         "social": sig.breakdown.social_sentiment_score,
                         "political": sig.breakdown.politician_score,
                         "momentum": sig.breakdown.momentum_score,
+                        "quant": sig.breakdown.quant_score,
                     },
+                    "quant": quant_dict,
                     "crowd_vs_insiders": _crowd_vs_insiders(
                         combined_insider,
                         sig.breakdown.social_sentiment_score,

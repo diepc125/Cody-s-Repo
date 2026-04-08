@@ -14,6 +14,7 @@ from trading_algorithm.config import (
     WEIGHT_NEWS_SENTIMENT,
     WEIGHT_POLITICIAN_TRADES,
     WEIGHT_PRICE_MOMENTUM,
+    WEIGHT_QUANT,
     WEIGHT_SOCIAL_SENTIMENT,
 )
 
@@ -36,11 +37,13 @@ class SignalBreakdown:
     social_sentiment_score: float = 0.0
     politician_score: float = 0.0
     momentum_score: float = 0.0
+    quant_score: float = 0.0
 
     news_weighted: float = 0.0
     social_weighted: float = 0.0
     politician_weighted: float = 0.0
     momentum_weighted: float = 0.0
+    quant_weighted: float = 0.0
 
 
 @dataclass
@@ -75,6 +78,7 @@ class SignalGenerator:
         politician_trade_count: int = 0,
         top_headlines: Optional[list[str]] = None,
         politician_summary: str = "",
+        quant_score: float = 0.0,
     ) -> StockSignal:
         """Generate a composite signal for a single ticker.
 
@@ -100,10 +104,12 @@ class SignalGenerator:
             social_sentiment_score=social_score,
             politician_score=politician_score,
             momentum_score=momentum_score,
+            quant_score=quant_score,
             news_weighted=news_score * WEIGHT_NEWS_SENTIMENT,
             social_weighted=social_score * WEIGHT_SOCIAL_SENTIMENT,
             politician_weighted=politician_score * WEIGHT_POLITICIAN_TRADES,
             momentum_weighted=momentum_score * WEIGHT_PRICE_MOMENTUM,
+            quant_weighted=quant_score * WEIGHT_QUANT,
         )
 
         composite = (
@@ -111,6 +117,7 @@ class SignalGenerator:
             + breakdown.social_weighted
             + breakdown.politician_weighted
             + breakdown.momentum_weighted
+            + breakdown.quant_weighted
         )
 
         # Clamp to [-1, 1]

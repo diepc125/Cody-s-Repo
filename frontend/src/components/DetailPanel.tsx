@@ -1,8 +1,8 @@
-import { BarChart3, Newspaper, Users, TrendingUp, Eye, Building2 } from "lucide-react";
+import { BarChart3, Newspaper, Users, TrendingUp, Eye, Building2, FlaskConical } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
-import type { StockSignal, CrowdVsInsiders } from "../types";
+import type { StockSignal, CrowdVsInsiders, QuantData } from "../types";
 
 interface InsiderTransaction {
   name: string;
@@ -115,6 +115,7 @@ function scoreVerdict(value: number, dimension: string): string {
     social:    ["Retail crowd strongly bullish", "Retail crowd leaning bullish", "Retail crowd leaning bearish", "Retail crowd strongly bearish"],
     political: ["Congressional insiders buying heavily", "Some insider buying activity", "Some insider selling activity", "Congressional insiders selling heavily"],
     momentum:  ["Strong upward price momentum", "Mild upward momentum", "Mild downward momentum", "Strong downward pressure"],
+    quant:     ["Models strongly agree: buy", "Models lean bullish", "Models lean bearish", "Models strongly agree: sell"],
   };
 
   const [sb, mb, ms, ss] = map[dimension] ?? ["Strongly positive", "Mildly positive", "Mildly negative", "Strongly negative"];
@@ -214,6 +215,56 @@ function CrowdVsInsidersBlock({ cvi }: { cvi: CrowdVsInsiders }) {
   );
 }
 
+function QuantAnalysisBlock({ quant }: { quant: QuantData }) {
+  const scoreColor = quant.score >= 0.1 ? "text-gain" : quant.score <= -0.1 ? "text-loss" : "text-dim";
+  const scoreLabel = quant.score >= 0.3  ? "Strongly Bullish"
+                   : quant.score >= 0.1  ? "Leaning Bullish"
+                   : quant.score <= -0.3 ? "Strongly Bearish"
+                   : quant.score <= -0.1 ? "Leaning Bearish"
+                   : "Neutral";
+
+  return (
+    <div className="detail-section">
+      <h4 className="section-title">
+        <FlaskConical size={13} style={{ display: "inline", marginRight: 5 }} />
+        Quantitative Analysis
+        <span className={`quant-composite-badge ${scoreColor}`} style={{ marginLeft: 8 }}>
+          {scoreLabel}
+        </span>
+      </h4>
+      <div className="quant-indicators">
+        {quant.signals.map((s) => (
+          <div key={s.name} className="quant-indicator-row">
+            <span className="quant-indicator-name">{s.name}</span>
+            <span className="quant-indicator-verdict">{s.verdict}</span>
+            <span className={`quant-indicator-dot ${s.bullish ? "quant-dot-bull" : s.score === 0 ? "quant-dot-neutral" : "quant-dot-bear"}`} />
+          </div>
+        ))}
+      </div>
+      <div className="quant-metrics">
+        <div className="quant-metric">
+          <span className="quant-metric-label">Z-Score</span>
+          <span className={`quant-metric-value ${quant.zscore <= -1 ? "text-gain" : quant.zscore >= 1 ? "text-loss" : "text-dim"}`}>
+            {quant.zscore.toFixed(2)}
+          </span>
+        </div>
+        <div className="quant-metric">
+          <span className="quant-metric-label">Bollinger %B</span>
+          <span className={`quant-metric-value ${quant.pct_b < 0.2 ? "text-gain" : quant.pct_b > 0.8 ? "text-loss" : "text-dim"}`}>
+            {(quant.pct_b * 100).toFixed(0)}%
+          </span>
+        </div>
+        <div className="quant-metric">
+          <span className="quant-metric-label">OBV Slope</span>
+          <span className={`quant-metric-value ${quant.obv_slope > 0 ? "text-gain" : quant.obv_slope < 0 ? "text-loss" : "text-dim"}`}>
+            {quant.obv_slope >= 0 ? "+" : ""}{quant.obv_slope.toFixed(3)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DetailPanel({ signal }: DetailPanelProps) {
   if (!signal) {
     return (
@@ -242,11 +293,17 @@ export function DetailPanel({ signal }: DetailPanelProps) {
         {/* Score breakdown */}
         <div className="detail-section">
           <h4 className="section-title">What's Driving the Signal</h4>
-          <ScoreBar label="News Coverage"         value={signal.breakdown.news}      icon={<Newspaper  size={13} />} dimension="news" />
-          <ScoreBar label="Social Media Mood"     value={signal.breakdown.social}    icon={<Users      size={13} />} dimension="social" />
-          <ScoreBar label="Congressional Trades"  value={signal.breakdown.political} icon={<BarChart3  size={13} />} dimension="political" />
-          <ScoreBar label="Price Momentum"        value={signal.breakdown.momentum}  icon={<TrendingUp size={13} />} dimension="momentum" />
+          <ScoreBar label="News Coverage"         value={signal.breakdown.news}      icon={<Newspaper    size={13} />} dimension="news" />
+          <ScoreBar label="Social Media Mood"     value={signal.breakdown.social}    icon={<Users        size={13} />} dimension="social" />
+          <ScoreBar label="Congressional Trades"  value={signal.breakdown.political} icon={<BarChart3    size={13} />} dimension="political" />
+          <ScoreBar label="Price Momentum"        value={signal.breakdown.momentum}  icon={<TrendingUp   size={13} />} dimension="momentum" />
+          <ScoreBar label="Quant Models"          value={signal.breakdown.quant ?? 0} icon={<FlaskConical size={13} />} dimension="quant" />
         </div>
+
+        {/* Quantitative analysis detail */}
+        {signal.quant && signal.quant.signals.length > 0 && (
+          <QuantAnalysisBlock quant={signal.quant} />
+        )}
 
         {/* Crowd vs Insiders */}
         {signal.crowd_vs_insiders && (

@@ -3,6 +3,24 @@ export interface Breakdown {
   social: number;
   political: number;
   momentum: number;
+  quant: number;
+}
+
+export interface QuantSignalItem {
+  name: string;
+  verdict: string;
+  score: number;
+  value: number;
+  bullish: boolean;
+}
+
+export interface QuantData {
+  score: number;
+  zscore: number;
+  macd_histogram: number;
+  pct_b: number;
+  obv_slope: number;
+  signals: QuantSignalItem[];
 }
 
 export interface CrowdVsInsiders {
@@ -21,6 +39,7 @@ export interface StockSignal {
   score: number;
   confidence: number;
   breakdown: Breakdown;
+  quant?: QuantData;
   crowd_vs_insiders: CrowdVsInsiders;
   headlines: string[];
   politician_activity: string;
