@@ -27,6 +27,7 @@ from social_fetcher import SocialSentimentAggregator
 from sec_insider import InsiderTracker
 from trading_algorithm.quant import QuantAnalyzer
 import database
+from chat import ChatEngine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -103,6 +104,26 @@ class NewsItem(BaseModel):
     link: str
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatMessage]
+
+
+class ChatToolUse(BaseModel):
+    name: str
+    args: dict = {}
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    tools_used: list[ChatToolUse] = []
+    model: str = ""
+
+
 # ── Shared state ────────────────────────────────────────────
 class AppState:
     def __init__(self):
@@ -121,6 +142,9 @@ class AppState:
         self.latest_insider: dict[str, dict] = {}
         self.ws_clients: set[WebSocket] = set()
         self._poll_task: Optional[asyncio.Task] = None
+        # Lazy — created on first /api/chat call so Ollama being offline
+        # never blocks backend startup.
+        self.chat_engine: Optional[ChatEngine] = None
 
     def run_cycle(self, tickers: list[str] = None) -> dict[str, dict]:
         """Execute a full analysis cycle and return serializable signal dicts."""
@@ -463,6 +487,21 @@ async def get_insider(ticker: str):
         sig = await asyncio.to_thread(state.insider_tracker.get_insider_signal, ticker)
         state.latest_insider[ticker] = state.insider_tracker.to_dict(sig)
     return state.latest_insider[ticker]
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def post_chat(req: ChatRequest):
+    """Run one chat turn against the local Ollama-backed assistant.
+
+    The engine is created lazily on first call so Ollama being offline
+    never blocks backend startup — users who aren't using the chat tab
+    don't need Ollama installed at all.
+    """
+    if state.chat_engine is None:
+        state.chat_engine = ChatEngine(state)
+    history = [m.model_dump() for m in req.messages]
+    result = await asyncio.to_thread(state.chat_engine.chat, history)
+    return ChatResponse(**result)
 
 
 @app.get("/api/gpu")

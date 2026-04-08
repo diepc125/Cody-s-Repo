@@ -1,6 +1,6 @@
-import { BarChart2, TrendingUp, MessageSquare, Search } from "lucide-react";
+import { BarChart2, TrendingUp, MessageSquare, Search, Bot } from "lucide-react";
 
-export type Tab = "overview" | "charts" | "social" | "analysis";
+export type Tab = "overview" | "charts" | "social" | "analysis" | "chat";
 
 interface TabNavProps {
   active: Tab;
@@ -12,6 +12,7 @@ const TABS: { id: Tab; label: string; description: string; icon: React.ReactNode
   { id: "charts",   label: "Charts",      description: "Price history and sentiment over time",       icon: <TrendingUp size={16} /> },
   { id: "social",   label: "Social Buzz", description: "What Reddit and social media are saying",    icon: <MessageSquare size={16} /> },
   { id: "analysis", label: "Deep Dive",   description: "Full signal breakdown for a selected stock", icon: <Search size={16} /> },
+  { id: "chat",     label: "Assistant",   description: "Ask the local AI about your signals",        icon: <Bot size={16} /> },
 ];
 
 export function TabNav({ active, onChange }: TabNavProps) {

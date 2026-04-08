@@ -14,3 +14,6 @@ feedparser>=6.0.0
 #   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126
 transformers>=4.40.0
 accelerate>=0.27.0
+
+# Chat assistant — talks to local Ollama via its OpenAI-compatible API
+openai>=1.50.0

@@ -10,6 +10,7 @@ import { Watchlist } from "./components/Watchlist";
 import { CandlestickChart } from "./components/CandlestickChart";
 import { SentimentChart } from "./components/SentimentChart";
 import { SocialPanel } from "./components/SocialPanel";
+import { ChatPanel } from "./components/ChatPanel";
 import { TabNav, type Tab } from "./components/TabNav";
 import { useWebSocket } from "./hooks/useWebSocket";
 import type { StockSignal } from "./types";
@@ -108,6 +109,13 @@ function App() {
               <div className="tab-pane analysis-pane">
                 <DetailPanel signal={selectedSignal} />
                 <NewsFeed signals={signals} />
+              </div>
+            )}
+
+            {/* ── Assistant ── */}
+            {activeTab === "chat" && (
+              <div className="tab-pane full-pane">
+                <ChatPanel />
               </div>
             )}
 
