@@ -66,22 +66,37 @@ class StockDataFetcher:
         self._cache = results
         return results
 
-    def fetch_price_history(self, symbol: str, days: int = 30) -> list[dict]:
-        """Fetch daily OHLCV for momentum calculations."""
+    def fetch_price_history(self, symbol: str, days: int = 60) -> list[dict]:
+        """Fetch daily OHLCV for momentum and quant calculations.
+
+        Uses explicit start/end dates instead of the period string so the
+        request works across all yfinance versions.
+        """
         try:
             ticker = yf.Ticker(symbol)
-            hist = ticker.history(period=f"{days}d")
-            return [
+            end   = datetime.now()
+            start = end - timedelta(days=days)
+            hist  = ticker.history(
+                start=start.strftime("%Y-%m-%d"),
+                end=end.strftime("%Y-%m-%d"),
+                interval="1d",
+            )
+            if hist.empty:
+                logger.warning("Empty price history for %s", symbol)
+                return []
+            bars = [
                 {
-                    "date": idx.to_pydatetime(),
-                    "open": row["Open"],
-                    "high": row["High"],
-                    "low": row["Low"],
-                    "close": row["Close"],
-                    "volume": row["Volume"],
+                    "date":   idx.to_pydatetime(),
+                    "open":   float(row["Open"]),
+                    "high":   float(row["High"]),
+                    "low":    float(row["Low"]),
+                    "close":  float(row["Close"]),
+                    "volume": int(row["Volume"]),
                 }
                 for idx, row in hist.iterrows()
             ]
+            logger.debug("Fetched %d bars for %s", len(bars), symbol)
+            return bars
         except Exception as exc:
             logger.warning("History fetch failed for %s: %s", symbol, exc)
             return []

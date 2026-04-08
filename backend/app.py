@@ -28,7 +28,7 @@ from sec_insider import InsiderTracker
 from trading_algorithm.quant import QuantAnalyzer
 import database
 
-logging.basicConfig(level=logging.WARNING)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -171,6 +171,10 @@ class AppState:
 
                 quant_result = self.quant_analyzer.analyze(history)
                 quant_dict   = self.quant_analyzer.to_dict(quant_result)
+                logger.info(
+                    "%s: %d price bars, quant_score=%.3f, signals=%d",
+                    ticker, len(history), quant_result.score, len(quant_result.signals),
+                )
 
                 sig = self.signal_generator.generate_signal(
                     ticker=ticker,
