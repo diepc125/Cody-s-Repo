@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Header } from "./components/Header";
-import { MarketBar } from "./components/MarketBar";
+import { ScreenerSummary } from "./components/ScreenerSummary";
 import { FilterBar, DEFAULT_FILTERS } from "./components/FilterBar";
 import type { Filters } from "./components/FilterBar";
 import { SignalTable } from "./components/SignalTable";
@@ -50,8 +50,11 @@ function App() {
 
   return (
     <div className="app">
-      <Header connected={connected} lastUpdate={lastUpdate} stockCount={Object.keys(signals).length} />
-      <MarketBar signals={signals} />
+      <Header
+        connected={connected}
+        lastUpdate={lastUpdate}
+        stockCount={Object.keys(signals).length}
+      />
 
       <div className="main-grid">
         <aside className="sidebar">
@@ -65,26 +68,19 @@ function App() {
 
             {/* ── Screener ── */}
             {activeTab === "overview" && (
-              <div className="tab-pane full-pane screener-pane">
-                <div className="panel signal-table-panel">
-                  <div className="panel-header">
-                    <span className="panel-title">Stock Screener</span>
-                    <span className="panel-meta screener-hint">
-                      Click any row to open the Deep Dive
-                    </span>
-                  </div>
-                  <FilterBar
-                    filters={filters}
-                    onChange={setFilters}
-                    resultCount={Object.keys(filteredSignals).length}
-                    totalCount={Object.keys(signals).length}
-                  />
-                  <SignalTable
-                    signals={filteredSignals}
-                    onSelect={(t) => { setSelectedTicker(t); setActiveTab("analysis"); }}
-                    selected={selectedTicker}
-                  />
-                </div>
+              <div className="tab-pane screener-pane">
+                <ScreenerSummary signals={signals} />
+                <FilterBar
+                  filters={filters}
+                  onChange={setFilters}
+                  resultCount={Object.keys(filteredSignals).length}
+                  totalCount={Object.keys(signals).length}
+                />
+                <SignalTable
+                  signals={filteredSignals}
+                  onSelect={(t) => { setSelectedTicker(t); setActiveTab("analysis"); }}
+                  selected={selectedTicker}
+                />
               </div>
             )}
 
@@ -98,7 +94,7 @@ function App() {
 
             {/* ── Social Buzz ── */}
             {activeTab === "social" && (
-              <div className="tab-pane full-pane">
+              <div className="tab-pane">
                 <SocialPanel signals={signals} />
               </div>
             )}
