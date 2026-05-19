@@ -3,6 +3,27 @@ import { useEffect, useState } from "react";
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 import type { StockSignal, CrowdVsInsiders, QuantData } from "../types";
+import { COMPANY_NAMES } from "../constants";
+
+function signalBadgeClass(signal: string): string {
+  switch (signal) {
+    case "STRONG BUY":  return "signal-strong-buy";
+    case "BUY":         return "signal-buy";
+    case "SELL":        return "signal-sell";
+    case "STRONG SELL": return "signal-strong-sell";
+    default:            return "signal-hold";
+  }
+}
+
+function signalLabel(signal: string): string {
+  switch (signal) {
+    case "STRONG BUY":  return "Strong Buy";
+    case "BUY":         return "Buy";
+    case "SELL":        return "Sell";
+    case "STRONG SELL": return "Strong Sell";
+    default:            return "Hold";
+  }
+}
 
 interface InsiderTransaction {
   name: string;
@@ -302,30 +323,58 @@ export function DetailPanel({ signal }: DetailPanelProps) {
   if (!signal) {
     return (
       <div className="panel detail-panel">
-        <div className="panel-header">
-          <span className="panel-title">Details</span>
-        </div>
         <div className="empty-detail">
-          <p>No stock selected.</p>
-          <p className="empty-detail-hint">Go to the Screener tab and click any row to see the full breakdown here.</p>
+          <p>Select a stock to see the full breakdown.</p>
+          <p className="empty-detail-hint">Pick any row in the Screener or any ticker in the Watchlist.</p>
         </div>
       </div>
     );
   }
 
+  const change = signal.change_pct ?? 0;
+  const positive = change >= 0;
+  const price = signal.price;
+
   return (
     <div className="panel detail-panel">
-      <div className="panel-header">
-        <span className="panel-title">{signal.ticker} — Signal Breakdown</span>
-        <span className="panel-meta">
-          {new Date(signal.timestamp).toLocaleTimeString()}
-        </span>
+      {/* Hero — ticker, company, price, change, signal badge */}
+      <div className="detail-hero">
+        <div className="hero-identity">
+          <div className="hero-ticker-row">
+            <span className="hero-ticker">{signal.ticker}</span>
+            <span className={`signal-badge ${signalBadgeClass(signal.signal)}`}>
+              {signalLabel(signal.signal)}
+            </span>
+          </div>
+          <span className="hero-company">{COMPANY_NAMES[signal.ticker] ?? ""}</span>
+        </div>
+        <div className="hero-prices">
+          <span className="hero-price">
+            {price != null ? `$${price.toFixed(2)}` : "—"}
+          </span>
+          <span className={`hero-change ${positive ? "text-gain" : "text-loss"}`}>
+            {signal.change_pct != null
+              ? `${positive ? "+" : ""}${change.toFixed(2)}%`
+              : "—"}
+          </span>
+        </div>
+        <div className="hero-meta">
+          <span className="hero-meta-item">
+            Confidence <strong>{(signal.confidence * 100).toFixed(0)}%</strong>
+          </span>
+          <span className="hero-meta-sep">·</span>
+          <span className="hero-meta-item">
+            Composite <strong className={signal.score >= 0 ? "text-gain" : "text-loss"}>
+              {signal.score >= 0 ? "+" : ""}{signal.score.toFixed(3)}
+            </strong>
+          </span>
+        </div>
       </div>
 
       <div className="detail-content">
         {/* Score breakdown */}
         <div className="detail-section">
-          <h4 className="section-title">What's Driving the Signal</h4>
+          <h4 className="section-title">Signal Composition</h4>
           <ScoreBar label="News Coverage"         value={signal.breakdown.news}      icon={<Newspaper    size={13} />} dimension="news" />
           <ScoreBar label="Social Media Mood"     value={signal.breakdown.social}    icon={<Users        size={13} />} dimension="social" />
           <ScoreBar label="Congressional Trades"  value={signal.breakdown.political} icon={<BarChart3    size={13} />} dimension="political" />

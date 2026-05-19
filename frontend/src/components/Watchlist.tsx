@@ -1,4 +1,5 @@
 import type { StockSignal } from "../types";
+import { COMPANY_NAMES } from "../constants";
 
 interface WatchlistProps {
   signals: Record<string, StockSignal>;
@@ -23,28 +24,47 @@ export function Watchlist({ signals, onSelect, selected }: WatchlistProps) {
 
   return (
     <div className="watchlist-panel">
-      <div className="watchlist-heading">Watchlist</div>
+      <div className="watchlist-heading">
+        <span>Watchlist</span>
+        <span className="watchlist-count">{sorted.length}</span>
+      </div>
       <div className="watchlist">
-        {sorted.map((s) => (
-          <div
-            key={s.ticker}
-            className={`watchlist-item ${selected === s.ticker ? "selected" : ""}`}
-            onClick={() => onSelect(s.ticker)}
-          >
-            <span className={`signal-dot ${signalDotClass(s.signal)}`} title={s.signal} />
-            <div className="watchlist-left">
-              <span className="watchlist-ticker">{s.ticker}</span>
-              <span className="watchlist-price">
-                {s.price != null ? `$${s.price.toFixed(2)}` : "—"}
-              </span>
+        {sorted.map((s) => {
+          const change = s.change_pct ?? 0;
+          const positive = change >= 0;
+          return (
+            <div
+              key={s.ticker}
+              className={`watchlist-item ${selected === s.ticker ? "selected" : ""}`}
+              onClick={() => onSelect(s.ticker)}
+            >
+              <div className="wl-row">
+                <span
+                  className={`signal-dot ${signalDotClass(s.signal)}`}
+                  title={s.signal}
+                />
+                <div className="wl-identity">
+                  <span className="wl-ticker">{s.ticker}</span>
+                  <span className="wl-company">
+                    {COMPANY_NAMES[s.ticker] ?? ""}
+                  </span>
+                </div>
+                <div className="wl-numbers">
+                  <span className="wl-price">
+                    {s.price != null ? s.price.toFixed(2) : "—"}
+                  </span>
+                  <span
+                    className={`wl-change ${positive ? "text-gain" : "text-loss"}`}
+                  >
+                    {s.change_pct != null
+                      ? `${positive ? "+" : ""}${change.toFixed(2)}%`
+                      : "—"}
+                  </span>
+                </div>
+              </div>
             </div>
-            <span className={`watchlist-change ${(s.change_pct ?? 0) >= 0 ? "text-gain" : "text-loss"}`}>
-              {s.change_pct != null
-                ? `${s.change_pct >= 0 ? "+" : ""}${s.change_pct.toFixed(2)}%`
-                : "—"}
-            </span>
-          </div>
-        ))}
+          );
+        })}
         {sorted.length === 0 && (
           <div className="empty-state">Waiting for data…</div>
         )}

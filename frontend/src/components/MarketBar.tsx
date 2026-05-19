@@ -1,4 +1,3 @@
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { StockSignal } from "../types";
 
 interface MarketBarProps {
@@ -28,28 +27,14 @@ export function MarketBar({ signals }: MarketBarProps) {
   return (
     <div className="market-bar">
       <div className="market-bar-item">
-        <span className="market-bar-label">Market Sentiment</span>
+        <span className="market-bar-label">Market</span>
         <span className={`market-bar-value sentiment-${sentimentClass}`}>
-          {sentiment === "Bullish" && <TrendingUp size={14} />}
-          {sentiment === "Bearish" && <TrendingDown size={14} />}
-          {sentiment === "Neutral" && <Minus size={14} />}
           {sentiment}
         </span>
       </div>
-      <div className="market-bar-divider" />
+
       <div className="market-bar-item">
-        <span className="market-bar-label">Signals</span>
-        <span className="market-bar-value">
-          <span className="text-gain">{buyCount} Buy</span>
-          {" / "}
-          <span className="text-muted">{holdCount} Hold</span>
-          {" / "}
-          <span className="text-loss">{sellCount} Sell</span>
-        </span>
-      </div>
-      <div className="market-bar-divider" />
-      <div className="market-bar-item">
-        <span className="market-bar-label">Composite Score</span>
+        <span className="market-bar-label">Composite</span>
         <span
           className={`market-bar-value ${avgScore >= 0 ? "text-gain" : "text-loss"}`}
         >
@@ -57,10 +42,16 @@ export function MarketBar({ signals }: MarketBarProps) {
           {avgScore.toFixed(3)}
         </span>
       </div>
-      <div className="market-bar-divider" />
-      <div className="market-bar-item">
-        <span className="market-bar-label">Tracking</span>
-        <span className="market-bar-value">{values.length} Instruments</span>
+
+      <div className="market-bar-item market-bar-signals">
+        <span className="market-bar-label">Signals</span>
+        <span className="market-bar-value">
+          <span className="text-gain">{buyCount}</span>
+          <span className="market-bar-sep">·</span>
+          <span className="text-muted">{holdCount}</span>
+          <span className="market-bar-sep">·</span>
+          <span className="text-loss">{sellCount}</span>
+        </span>
       </div>
     </div>
   );
